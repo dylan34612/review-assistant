@@ -1,0 +1,88 @@
+import * as cheerio from "cheerio";
+import {
+  canonicalizeProductUrl,
+  extractAmazonAsin,
+  extractWalmartItemId,
+  normalizedProductKey,
+  normalizeWhitespace
+} from "@/lib/normalize";
+import { ExtractedItem, ProductSnapshot } from "@/lib/types";
+
+export async function enrichProduct(item: ExtractedItem): Promise<ProductSnapshot> {
+  const canonicalUrl = canonicalizeProductUrl(item.productUrl);
+  const externalId = item.externalId || (canonicalUrl ? extractAmazonAsin(canonicalUrl) || extractWalmartItemId(canonicalUrl) : undefined);
+  const base: ProductSnapshot = {
+    title: item.title,
+    merchant: item.merchant,
+    canonicalUrl,
+    externalId,
+    brand: item.brand,
+    imageUrl: item.imageUrl,
+    price: item.price,
+    currency: item.currency,
+    source: "email"
+  };
+
+  if (!canonicalUrl) return base;
+
+  try {
+    const response = await fetch(canonicalUrl, {
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (compatible; ReviewAssistant/1.0; +https://github.com/self-hosted-review-assistant)",
+        accept: "text/html,application/xhtml+xml"
+      },
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!response.ok) return base;
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const title =
+      meta($, "og:title") ||
+      meta($, "twitter:title") ||
+      normalizeWhitespace($("title").first().text()).replace(/\s*-\s*Amazon.*$/i, "");
+    const imageUrl = meta($, "og:image") || meta($, "twitter:image") || item.imageUrl;
+    const description = meta($, "og:description") || meta($, "description");
+    const brand = $('[itemprop="brand"]').first().text() || item.brand;
+    const bullets = $("#feature-bullets li, [data-testid='product-highlights'] li, .about-this-item li")
+      .map((_, element) => normalizeWhitespace($(element).text()))
+      .get()
+      .filter((line) => line.length > 0 && line.length < 240)
+      .slice(0, 8);
+    return {
+      ...base,
+      title: title || base.title,
+      imageUrl,
+      description,
+      brand: normalizeWhitespace(brand || "") || base.brand,
+      bullets,
+      source: "metadata"
+    };
+  } catch {
+    return base;
+  }
+}
+
+function meta($: cheerio.CheerioAPI, name: string) {
+  return normalizeWhitespace(
+    $(`meta[property="${name}"]`).attr("content") ||
+      $(`meta[name="${name}"]`).attr("content") ||
+      ""
+  );
+}
+
+export function productIdentity(item: ExtractedItem, snapshot: ProductSnapshot) {
+  const externalId = snapshot.externalId || item.externalId;
+  const canonicalUrl = snapshot.canonicalUrl || canonicalizeProductUrl(item.productUrl);
+  return {
+    externalId,
+    canonicalUrl,
+    normalizedKey: normalizedProductKey({
+      merchant: item.merchant,
+      externalId,
+      canonicalUrl,
+      title: snapshot.title || item.title,
+      brand: snapshot.brand || item.brand
+    })
+  };
+}

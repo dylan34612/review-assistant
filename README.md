@@ -1,0 +1,122 @@
+# Review Assistant
+
+Self-hosted purchase review assistant for Unraid. It ingests receipts from IMAP, extracts purchases locally, dedupes repeat purchases, waits an inferred amount of time, notifies through one enabled channel, and drafts authentic reviews with Gemini only after you provide notes and a rating.
+
+## What It Does
+
+- Connects directly to Namecheap Private Email over IMAP.
+- Reads likely receipt/order/shipping/delivery messages only.
+- Parses Amazon, Walmart, and generic merchant receipts locally.
+- Enriches products from receipt links/page metadata when available.
+- Avoids prompting for products already reviewed.
+- Infers review timing without manual categories.
+- Supports PWA push notifications and email reminders as independent settings.
+- Uses Gemini for review drafting from product metadata plus your blurb, not raw mailbox contents.
+- Requires human approval before a review is copied or used.
+
+## Privacy Model
+
+Gemini is not used on raw emails by default. The worker extracts receipt data with local parsers. Review drafting sends only product metadata, your rating, and your own notes. Receipt fallback settings exist in the UI, but the default is off.
+
+The app stores message identifiers so it does not process the same email twice. It does not move, delete, or mark emails in your mailbox.
+
+## Unraid Deployment
+
+1. Copy `.env.example` to `.env`.
+2. Set strong Postgres credentials in both `.env` and `docker-compose.yml`.
+3. Fill in IMAP credentials:
+
+```env
+IMAP_HOST=mail.privateemail.com
+IMAP_PORT=993
+IMAP_SECURE=true
+IMAP_USER=you@example.com
+IMAP_PASSWORD=your-privateemail-password
+IMAP_MAILBOX=INBOX
+```
+
+4. Fill in SMTP if you want email reminders:
+
+```env
+SMTP_HOST=mail.privateemail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=you@example.com
+SMTP_PASSWORD=your-privateemail-password
+SMTP_FROM=Review Assistant <you@example.com>
+```
+
+5. Add a Gemini key:
+
+```env
+GEMINI_API_KEY=your-key
+GEMINI_MODEL=gemini-2.5-flash-lite
+```
+
+6. Generate Web Push keys:
+
+```bash
+npm run vapid:generate
+```
+
+Copy the three generated values into `.env`. `NEXT_PUBLIC_VAPID_PUBLIC_KEY` must match `VAPID_PUBLIC_KEY`.
+
+7. Set the public HTTPS URL:
+
+```env
+APP_BASE_URL=https://reviews.your-domain.com
+VAPID_SUBJECT=mailto:you@example.com
+```
+
+8. Start the stack:
+
+```bash
+docker compose up -d --build
+```
+
+The `worker` container runs migrations before starting. The app listens on port `3000`; put it behind your Unraid reverse proxy with HTTPS for PWA push support.
+
+## Notification Behavior
+
+Notification settings are controlled in `/settings`.
+
+- Push and email can be enabled independently.
+- The worker chooses one channel per review event.
+- Email fallback only runs if explicitly enabled and push delivery fails.
+- In-app review queue is always available.
+
+iOS/iPadOS requires the app to be added to the Home Screen before PWA push can work.
+
+## Receipt Coverage
+
+Amazon and Walmart have merchant-specific parsers. Other stores use generic receipt extraction from product links and plain-text line items. Unknown or unparseable messages are recorded as ignored/no-items rather than sent to Gemini.
+
+## Manual Backup
+
+The dashboard includes backup manual purchase entry for cases where a receipt cannot be parsed or a store does not email useful product details.
+
+## Local Development
+
+```bash
+npm install
+docker compose up -d db redis
+npm run db:migrate
+npm run dev
+```
+
+In another terminal:
+
+```bash
+npm run worker
+```
+
+## Verification
+
+Current verification performed:
+
+```bash
+npm run typecheck
+npm run build
+```
+
+Both pass.

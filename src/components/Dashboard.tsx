@@ -1,0 +1,173 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { CalendarClock, CheckCircle2, RefreshCcw, ShoppingBag } from "lucide-react";
+
+type Task = {
+  id: string;
+  status: string;
+  due_at: string;
+  title: string;
+  merchant: string;
+  image_url?: string;
+  category: string;
+};
+
+type Purchase = {
+  id: string;
+  merchant: string;
+  product_title: string;
+  purchased_at?: string;
+  delivered_at?: string;
+  reviewed_at?: string;
+};
+
+export function Dashboard() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+
+  async function load() {
+    const [taskResponse, purchaseResponse] = await Promise.all([fetch("/api/review-tasks"), fetch("/api/purchases")]);
+    setTasks(await taskResponse.json());
+    setPurchases(await purchaseResponse.json());
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const counts = useMemo(
+    () => ({
+      due: tasks.filter((task) => task.status === "due" || task.status === "drafted").length,
+      upcoming: tasks.filter((task) => task.status === "pending" || task.status === "snoozed").length,
+      completed: tasks.filter((task) => task.status === "completed").length,
+      purchases: purchases.length
+    }),
+    [tasks, purchases]
+  );
+
+  async function runSync() {
+    setRunning(true);
+    try {
+      await fetch("/api/worker/run-once", { method: "POST" });
+      await load();
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <section className="stack">
+      <div className="page-head">
+        <div>
+          <p className="eyebrow">Self-hosted queue</p>
+          <h1>Purchase reviews</h1>
+        </div>
+        <button className="button secondary" onClick={runSync} disabled={running}>
+          <RefreshCcw size={16} /> {running ? "Scanning" : "Scan mailbox"}
+        </button>
+      </div>
+
+      <div className="stat-grid">
+        <Stat icon={<BellIcon />} label="Ready" value={counts.due} />
+        <Stat icon={<CalendarClock />} label="Upcoming" value={counts.upcoming} />
+        <Stat icon={<ShoppingBag />} label="Purchases" value={counts.purchases} />
+        <Stat icon={<CheckCircle2 />} label="Completed" value={counts.completed} />
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Next reviews</h2>
+        </div>
+        {loading ? (
+          <p className="muted">Loading queue...</p>
+        ) : tasks.length ? (
+          <div className="table">
+            {tasks.slice(0, 12).map((task) => (
+              <a className="row" href={`/reviews?task=${task.id}`} key={task.id}>
+                <div>
+                  <strong>{task.title}</strong>
+                  <span>{task.merchant} · {task.category}</span>
+                </div>
+                <div>
+                  <strong>{task.status}</strong>
+                  <span>{new Date(task.due_at).toLocaleDateString()}</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">No review tasks yet. The worker will add them as receipts arrive, or you can add a backup purchase below.</p>
+        )}
+      </div>
+
+      <ManualPurchaseForm onCreated={load} />
+    </section>
+  );
+}
+
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className="stat">
+      {icon}
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function BellIcon() {
+  return <CalendarClock size={20} />;
+}
+
+function ManualPurchaseForm({ onCreated }: { onCreated: () => void }) {
+  const [saving, setSaving] = useState(false);
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setSaving(true);
+    try {
+      await fetch("/api/purchases", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(Object.fromEntries(form.entries()))
+      });
+      event.currentTarget.reset();
+      onCreated();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form className="panel form-grid" onSubmit={submit}>
+      <div className="panel-head full">
+        <h2>Backup manual entry</h2>
+      </div>
+      <label>
+        Merchant
+        <input name="merchant" placeholder="Amazon, Walmart, Target" required />
+      </label>
+      <label>
+        Product title
+        <input name="title" required />
+      </label>
+      <label className="wide">
+        Product URL
+        <input name="productUrl" type="url" />
+      </label>
+      <label>
+        Purchase date
+        <input name="purchasedAt" type="date" />
+      </label>
+      <label>
+        Delivered date
+        <input name="deliveredAt" type="date" />
+      </label>
+      <button className="button" disabled={saving}>{saving ? "Adding" : "Add purchase"}</button>
+    </form>
+  );
+}

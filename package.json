@@ -1,0 +1,44 @@
+{
+  "name": "review-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "worker": "tsx src/worker/index.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "vapid:generate": "tsx scripts/generate-vapid.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@types/nodemailer": "^6.4.16",
+    "cheerio": "^1.0.0",
+    "date-fns": "^3.6.0",
+    "imapflow": "^1.0.164",
+    "ioredis": "^5.4.1",
+    "lucide-react": "^0.468.0",
+    "mailparser": "^3.7.1",
+    "next": "^15.1.0",
+    "nodemailer": "^6.9.16",
+    "pg": "^8.13.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsx": "^4.19.2",
+    "uuid": "^11.0.3",
+    "web-push": "^3.6.7",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/mailparser": "^3.4.5",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@types/web-push": "^3.6.3",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.1.0",
+    "typescript": "^5.7.2"
+  }
+}
