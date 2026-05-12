@@ -24,7 +24,17 @@ The app stores message identifiers so it does not process the same email twice. 
 
 1. Copy `.env.example` to `.env`.
 2. Set strong Postgres credentials in both `.env` and `docker-compose.yml`.
-3. Fill in IMAP credentials:
+3. Set app authentication before exposing the app on a domain:
+
+```env
+AUTH_ENABLED=true
+AUTH_USERNAME=admin
+AUTH_PASSWORD=use-a-long-unique-password
+```
+
+This uses browser Basic Auth and must be served over HTTPS when exposed outside your LAN. You can also add authentication at your reverse proxy, but do not leave both app auth and proxy auth disabled on a public domain.
+
+4. Fill in IMAP credentials:
 
 ```env
 IMAP_HOST=mail.privateemail.com
@@ -35,7 +45,7 @@ IMAP_PASSWORD=your-privateemail-password
 IMAP_MAILBOX=INBOX
 ```
 
-4. Fill in SMTP if you want email reminders:
+5. Fill in SMTP if you want email reminders:
 
 ```env
 SMTP_HOST=mail.privateemail.com
@@ -46,14 +56,14 @@ SMTP_PASSWORD=your-privateemail-password
 SMTP_FROM=Review Assistant <you@example.com>
 ```
 
-5. Add a Gemini key:
+6. Add a Gemini key:
 
 ```env
 GEMINI_API_KEY=your-key
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-6. Generate Web Push keys:
+7. Generate Web Push keys:
 
 ```bash
 npm run vapid:generate
@@ -61,14 +71,14 @@ npm run vapid:generate
 
 Copy the three generated values into `.env`. `NEXT_PUBLIC_VAPID_PUBLIC_KEY` must match `VAPID_PUBLIC_KEY`.
 
-7. Set the public HTTPS URL:
+8. Set the public HTTPS URL:
 
 ```env
 APP_BASE_URL=https://reviews.your-domain.com
 VAPID_SUBJECT=mailto:you@example.com
 ```
 
-8. Start the stack:
+9. Start the stack:
 
 ```bash
 docker compose up -d --build
