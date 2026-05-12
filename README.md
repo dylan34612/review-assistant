@@ -31,13 +31,20 @@ The repo publishes two container images to GitHub Container Registry on every pu
 
 For Unraid, use `docker-compose.unraid.yml`. It pulls those images instead of building locally and includes Watchtower to poll for new image versions and restart only the app containers.
 
-Because the repository and packages are private, log in to GHCR on Unraid before starting the stack:
+You can provide configuration in either of these ways:
+
+- Put a `.env` file next to `docker-compose.unraid.yml`.
+- Set stack environment variables in the Unraid Compose Manager UI.
+
+Do not put real passwords, email credentials, Gemini keys, or VAPID private keys directly into the tracked compose file if you plan to keep pulling updates from GitHub.
+
+If the GHCR packages are public, no Docker registry login is needed. If Docker reports an unauthorized pull, log in to GHCR on Unraid before starting the stack:
 
 ```bash
 echo YOUR_GITHUB_PAT | docker login ghcr.io -u dylan34612 --password-stdin
 ```
 
-The token needs `read:packages`. If the package remains linked to a private repo, it may also need repo access. Keep this token on the Unraid server only.
+The token needs `read:packages`. If the package is linked to a private repo, it may also need repo access. Keep this token on the Unraid server only.
 
 When you push changes to GitHub:
 
