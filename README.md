@@ -22,6 +22,32 @@ The app stores message identifiers so it does not process the same email twice. 
 
 ## Unraid Deployment
 
+### Automatic Image Updates
+
+The repo publishes two container images to GitHub Container Registry on every push to `master`:
+
+- `ghcr.io/dylan34612/review-assistant-web:latest`
+- `ghcr.io/dylan34612/review-assistant-worker:latest`
+
+For Unraid, use `docker-compose.unraid.yml`. It pulls those images instead of building locally and includes Watchtower to poll for new image versions and restart only the app containers.
+
+Because the repository and packages are private, log in to GHCR on Unraid before starting the stack:
+
+```bash
+echo YOUR_GITHUB_PAT | docker login ghcr.io -u dylan34612 --password-stdin
+```
+
+The token needs `read:packages`. If the package remains linked to a private repo, it may also need repo access. Keep this token on the Unraid server only.
+
+When you push changes to GitHub:
+
+1. GitHub Actions builds and publishes new images.
+2. Watchtower on Unraid sees the new image.
+3. Watchtower pulls and restarts `web` and `worker`.
+4. The `worker` container runs database migrations before starting.
+
+### Source Build Deployment
+
 1. Copy `.env.example` to `.env`.
 2. Set strong Postgres credentials in both `.env` and `docker-compose.yml`.
 3. Set app authentication before exposing the app on a domain:
@@ -85,6 +111,12 @@ docker compose up -d --build
 ```
 
 The `worker` container runs migrations before starting. The app listens on port `3000`; put it behind your Unraid reverse proxy with HTTPS for PWA push support.
+
+For automatic image updates on Unraid, start with:
+
+```bash
+docker compose -f docker-compose.unraid.yml up -d
+```
 
 ## Notification Behavior
 
