@@ -1,21 +1,20 @@
-import Redis from "ioredis";
+import { query } from "@/lib/db";
 import { markDueTasks } from "@/lib/repository";
 import { notifyDueTasks } from "@/lib/notifications";
 import { scanMailbox } from "@/worker/imap";
 
-const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", { maxRetriesPerRequest: null });
 const pollSeconds = Number(process.env.WORKER_POLL_SECONDS || 300);
+const lockId = 91234177;
 
 async function runOnce() {
-  const lockKey = "review-assistant:worker-lock";
-  const lock = await redis.set(lockKey, process.pid.toString(), "EX", Math.max(60, pollSeconds - 5), "NX");
-  if (!lock) return;
+  const lock = await query<{ locked: boolean }>("select pg_try_advisory_lock($1) as locked", [lockId]);
+  if (!lock.rows[0]?.locked) return;
   try {
     await scanMailbox();
     await markDueTasks();
     await notifyDueTasks();
   } finally {
-    await redis.del(lockKey);
+    await query("select pg_advisory_unlock($1)", [lockId]);
   }
 }
 

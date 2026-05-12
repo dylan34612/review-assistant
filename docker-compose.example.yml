@@ -3,78 +3,15 @@
 # variables in the stack environment UI instead of creating a separate .env.
 
 services:
-  db:
-    image: postgres:16-alpine
+  review-assistant:
+    image: ghcr.io/dylan34612/review-assistant-single:latest
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: review_assistant
-      POSTGRES_USER: review_assistant
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - /mnt/user/appdata/review-assistant/postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U review_assistant -d review_assistant"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    volumes:
-      - /mnt/user/appdata/review-assistant/redis:/data
-    command: ["redis-server", "--appendonly", "yes"]
-
-  web:
-    image: ghcr.io/dylan34612/review-assistant-web:latest
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
     ports:
       - "3000:3000"
+    volumes:
+      - /mnt/user/appdata/review-assistant/postgres:/var/lib/postgresql/data
     environment:
-      DATABASE_URL: postgres://review_assistant:${POSTGRES_PASSWORD}@db:5432/review_assistant
-      REDIS_URL: redis://redis:6379
-      APP_BASE_URL: ${APP_BASE_URL}
-      AUTH_ENABLED: ${AUTH_ENABLED}
-      AUTH_USERNAME: ${AUTH_USERNAME}
-      AUTH_PASSWORD: ${AUTH_PASSWORD}
-      IMAP_HOST: ${IMAP_HOST}
-      IMAP_PORT: ${IMAP_PORT}
-      IMAP_SECURE: ${IMAP_SECURE}
-      IMAP_USER: ${IMAP_USER}
-      IMAP_PASSWORD: ${IMAP_PASSWORD}
-      IMAP_MAILBOX: ${IMAP_MAILBOX}
-      IMAP_LOOKBACK_DAYS: ${IMAP_LOOKBACK_DAYS}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_SECURE: ${SMTP_SECURE}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      SMTP_FROM: ${SMTP_FROM}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_MODEL: ${GEMINI_MODEL}
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
-      VAPID_SUBJECT: ${VAPID_SUBJECT}
-      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-
-  worker:
-    image: ghcr.io/dylan34612/review-assistant-worker:latest
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    environment:
-      DATABASE_URL: postgres://review_assistant:${POSTGRES_PASSWORD}@db:5432/review_assistant
-      REDIS_URL: redis://redis:6379
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       APP_BASE_URL: ${APP_BASE_URL}
       AUTH_ENABLED: ${AUTH_ENABLED}
       AUTH_USERNAME: ${AUTH_USERNAME}
@@ -99,17 +36,3 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT}
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
       WORKER_POLL_SECONDS: ${WORKER_POLL_SECONDS}
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-
-  watchtower:
-    image: containrrr/watchtower:latest
-    restart: unless-stopped
-    environment:
-      WATCHTOWER_LABEL_ENABLE: "true"
-      WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_POLL_INTERVAL: "900"
-      WATCHTOWER_INCLUDE_RESTARTING: "true"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: web worker

@@ -24,6 +24,12 @@ jobs:
           - name: worker
             dockerfile: Dockerfile.worker
             image: review-assistant-worker
+          - name: combined
+            dockerfile: Dockerfile.combined
+            image: review-assistant
+          - name: single
+            dockerfile: Dockerfile.single
+            image: review-assistant-single
     steps:
       - name: Checkout
         uses: actions/checkout@v4

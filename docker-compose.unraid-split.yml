@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: review_assistant
+      POSTGRES_USER: review_assistant
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /mnt/user/appdata/review-assistant/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U review_assistant -d review_assistant"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    image: ghcr.io/dylan34612/review-assistant-web:latest
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  worker:
+    image: ghcr.io/dylan34612/review-assistant-worker:latest
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: "900"
+      WATCHTOWER_INCLUDE_RESTARTING: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker/config.json:/config.json:ro
+    command: web worker

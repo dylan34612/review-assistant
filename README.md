@@ -24,12 +24,18 @@ The app stores message identifiers so it does not process the same email twice. 
 
 ### Automatic Image Updates
 
-The repo publishes two container images to GitHub Container Registry on every push to `master`:
+The repo publishes container images to GitHub Container Registry on every push to `master`:
 
+- `ghcr.io/dylan34612/review-assistant:latest`
+- `ghcr.io/dylan34612/review-assistant-single:latest`
 - `ghcr.io/dylan34612/review-assistant-web:latest`
 - `ghcr.io/dylan34612/review-assistant-worker:latest`
 
-For Unraid, use `docker-compose.unraid.yml`. It pulls those images instead of building locally and includes Watchtower to poll for new image versions and restart only the app containers.
+For the default Unraid setup, use `docker-compose.unraid.yml`. It creates one container named `review-assistant` and runs Postgres, the web UI, and the background worker together.
+
+For a cleaner but still compact setup, use `docker-compose.unraid-simple.yml`. It creates two containers: `app` and `db`. The `app` container runs the web UI and background worker together.
+
+For a split-process setup, use `docker-compose.unraid-split.yml`. It creates separate web, worker, db, and watchtower containers.
 
 You can provide configuration in either of these ways:
 
@@ -52,8 +58,8 @@ When you push changes to GitHub:
 
 1. GitHub Actions builds and publishes new images.
 2. Watchtower on Unraid sees the new image.
-3. Watchtower pulls and restarts `web` and `worker`.
-4. The `worker` container runs database migrations before starting.
+3. Unraid's auto-update plugin or Watchtower pulls and restarts the changed app container.
+4. The app or worker process runs database migrations before starting.
 
 ### Source Build Deployment
 
@@ -121,10 +127,22 @@ docker compose up -d --build
 
 The `worker` container runs migrations before starting. The app listens on port `3000`; put it behind your Unraid reverse proxy with HTTPS for PWA push support.
 
-For automatic image updates on Unraid, start with:
+For the default one-container Unraid setup, start with:
 
 ```bash
 docker compose -f docker-compose.unraid.yml up -d
+```
+
+For the two-container Unraid setup, start with:
+
+```bash
+docker compose -f docker-compose.unraid-simple.yml up -d
+```
+
+For the split-process Unraid setup, start with:
+
+```bash
+docker compose -f docker-compose.unraid-split.yml up -d
 ```
 
 ## Notification Behavior

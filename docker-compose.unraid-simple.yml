@@ -1,17 +1,36 @@
-# Default Unraid deployment: one container.
-# This runs Postgres, the Next.js web app, and the background worker inside one
-# container to keep the Unraid Docker list compact.
+# Two-container Unraid deployment:
+# - app: web UI, API, IMAP worker, notifications, migrations
+# - db: Postgres data store
+#
+# Set the referenced variables in Unraid Compose Manager or in a .env file
+# next to this compose file.
 
 services:
-  review-assistant:
-    image: ghcr.io/dylan34612/review-assistant-single:latest
+  db:
+    image: postgres:16-alpine
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    environment:
+      POSTGRES_DB: review_assistant
+      POSTGRES_USER: review_assistant
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - /mnt/user/appdata/review-assistant/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U review_assistant -d review_assistant"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ghcr.io/dylan34612/review-assistant:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: postgres://review_assistant:${POSTGRES_PASSWORD}@db:5432/review_assistant
       APP_BASE_URL: ${APP_BASE_URL}
       AUTH_ENABLED: ${AUTH_ENABLED}
       AUTH_USERNAME: ${AUTH_USERNAME}

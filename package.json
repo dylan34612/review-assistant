@@ -17,7 +17,6 @@
     "cheerio": "^1.0.0",
     "date-fns": "^3.6.0",
     "imapflow": "^1.0.164",
-    "ioredis": "^5.4.1",
     "lucide-react": "^0.468.0",
     "mailparser": "^3.7.1",
     "next": "^15.1.0",

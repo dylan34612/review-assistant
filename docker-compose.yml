@@ -14,13 +14,6 @@ services:
       timeout: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    volumes:
-      - review_assistant_redis:/data
-    command: ["redis-server", "--appendonly", "yes"]
-
   web:
     build:
       context: .
@@ -30,8 +23,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
     ports:
       - "3000:3000"
 
@@ -44,9 +35,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
 
 volumes:
   review_assistant_db:
-  review_assistant_redis:
