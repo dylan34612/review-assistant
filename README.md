@@ -38,6 +38,8 @@ You can provide configuration in either of these ways:
 
 Do not put real passwords, email credentials, Gemini keys, or VAPID private keys directly into the tracked compose file if you plan to keep pulling updates from GitHub.
 
+If you want a copy-and-edit starting point, use `docker-compose.example.yml`. It shows every required app variable inline while still reading secret values from environment variables.
+
 If the GHCR packages are public, no Docker registry login is needed. If Docker reports an unauthorized pull, log in to GHCR on Unraid before starting the stack:
 
 ```bash
