@@ -26,6 +26,7 @@ export function ReviewWorkbench() {
   const [rating, setRating] = useState(5);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   async function load() {
     const response = await fetch("/api/review-tasks");
@@ -53,6 +54,7 @@ export function ReviewWorkbench() {
   async function generateDraft() {
     if (!selected) return;
     setBusy(true);
+    setError("");
     try {
       const response = await fetch(`/api/review-tasks/${selected.id}/draft`, {
         method: "POST",
@@ -63,6 +65,8 @@ export function ReviewWorkbench() {
       if (!response.ok) throw new Error(data.error || "Draft failed");
       setDraft(data.draft);
       await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Draft failed");
     } finally {
       setBusy(false);
     }
@@ -101,6 +105,7 @@ export function ReviewWorkbench() {
         <div className="panel-head">
           <h2>Review queue</h2>
         </div>
+        <p className="muted">Pick a product, add a short note, draft, then approve and copy.</p>
         {tasks.map((task) => (
           <button className={`task-button ${task.id === selectedId ? "active" : ""}`} key={task.id} onClick={() => selectTask(task)}>
             <strong>{task.title}</strong>
@@ -123,36 +128,51 @@ export function ReviewWorkbench() {
                 ) : null}
               </div>
             </div>
-            <label>
-              Star rating
-              <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>
-                {[5, 4, 3, 2, 1].map((value) => (
-                  <option key={value} value={value}>{value} stars</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Your notes
-              <textarea value={blurb} onChange={(event) => setBlurb(event.target.value)} placeholder="What worked, what didn't, how long you used it, and anything future buyers should know." />
-            </label>
-            <div className="action-row">
-              <button className="button" onClick={generateDraft} disabled={busy || blurb.trim().length < 3}>
-                <Sparkles size={16} /> {busy ? "Drafting" : "Draft with Gemini"}
-              </button>
-              <button className="button secondary" onClick={() => snooze(7)}>Snooze</button>
-              <button className="button secondary" onClick={skip}>Skip</button>
+            <div className="review-step">
+              <div>
+                <p className="eyebrow">Step 1</p>
+                <h2>Your experience</h2>
+              </div>
+              <div className="form-grid compact">
+                <label>
+                  Star rating
+                  <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>
+                    {[5, 4, 3, 2, 1].map((value) => (
+                      <option key={value} value={value}>{value} stars</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="wide">
+                  Your notes
+                  <textarea value={blurb} onChange={(event) => setBlurb(event.target.value)} placeholder="What worked, what didn't, how long you used it, and anything future buyers should know." />
+                </label>
+              </div>
+              <div className="action-row">
+                <button className="button" onClick={generateDraft} disabled={busy || blurb.trim().length < 3}>
+                  <Sparkles size={16} /> {busy ? "Drafting" : "Draft with Gemini"}
+                </button>
+                <button className="button secondary" onClick={() => snooze(7)}>Snooze</button>
+                <button className="button secondary" onClick={skip}>Skip</button>
+              </div>
+              {error ? <p className="error-text">{error}</p> : null}
             </div>
-            <label>
-              Final review
-              <textarea className="draft-box" value={draft} onChange={(event) => setDraft(event.target.value)} />
-            </label>
-            <div className="action-row">
-              <button className="button" onClick={complete} disabled={draft.trim().length < 3}>
-                <Save size={16} /> Approve and copy
-              </button>
-              <button className="button secondary" onClick={() => navigator.clipboard.writeText(draft)} disabled={!draft}>
-                <Copy size={16} /> Copy
-              </button>
+            <div className="review-step">
+              <div>
+                <p className="eyebrow">Step 2</p>
+                <h2>Approve review</h2>
+              </div>
+              <label>
+                Final review
+                <textarea className="draft-box" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Draft will appear here. You can edit it before approving." />
+              </label>
+              <div className="action-row">
+                <button className="button" onClick={complete} disabled={draft.trim().length < 3}>
+                  <Save size={16} /> Approve and copy
+                </button>
+                <button className="button secondary" onClick={() => navigator.clipboard.writeText(draft)} disabled={!draft}>
+                  <Copy size={16} /> Copy
+                </button>
+              </div>
             </div>
           </>
         ) : (

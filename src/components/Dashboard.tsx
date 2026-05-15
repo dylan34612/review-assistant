@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, CheckCircle2, RefreshCcw, ShoppingBag } from "lucide-react";
+import { CalendarClock, CheckCircle2, RefreshCcw, RotateCcw, ShoppingBag } from "lucide-react";
 
 type Task = {
   id: string;
@@ -27,6 +27,7 @@ export function Dashboard() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
     const [taskResponse, purchaseResponse] = await Promise.all([fetch("/api/review-tasks"), fetch("/api/purchases")]);
@@ -59,6 +60,20 @@ export function Dashboard() {
     }
   }
 
+  async function refreshData() {
+    const confirmed = window.confirm(
+      "This will delete all detected purchases and review tasks, then rescan your mailbox with the current parser. Settings and notification subscriptions are kept. Continue?"
+    );
+    if (!confirmed) return;
+    setRefreshing(true);
+    try {
+      await fetch("/api/worker/refresh", { method: "POST" });
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <section className="stack">
       <div className="page-head">
@@ -66,9 +81,14 @@ export function Dashboard() {
           <p className="eyebrow">Self-hosted queue</p>
           <h1>Purchase reviews</h1>
         </div>
-        <button className="button secondary" onClick={runSync} disabled={running}>
-          <RefreshCcw size={16} /> {running ? "Scanning" : "Scan mailbox"}
-        </button>
+        <div className="action-row">
+          <button className="button secondary" onClick={runSync} disabled={running || refreshing}>
+            <RefreshCcw size={16} /> {running ? "Scanning" : "Scan mailbox"}
+          </button>
+          <button className="button danger" onClick={refreshData} disabled={running || refreshing}>
+            <RotateCcw size={16} /> {refreshing ? "Refreshing" : "Clear and rescan"}
+          </button>
+        </div>
       </div>
 
       <div className="stat-grid">
@@ -81,6 +101,7 @@ export function Dashboard() {
       <div className="panel">
         <div className="panel-head">
           <h2>Next reviews</h2>
+          <a className="inline-link" href="/reviews">Open review workspace</a>
         </div>
         {loading ? (
           <p className="muted">Loading queue...</p>

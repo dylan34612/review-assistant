@@ -49,8 +49,6 @@ export function isLikelyReceipt(mail: Pick<ParsedMail, "from" | "subject">) {
 export function parseReceipt(mail: ParsedMail): ExtractedItem[] {
   const sender = mail.from?.text ?? "";
   const subject = mail.subject ?? "";
-  const html = mail.html || "";
-  const text = mail.text || "";
   const merchant = normalizeMerchant(`${sender} ${subject}`);
   if (merchant === "amazon") return parseAmazon(mail, merchant);
   if (merchant === "walmart") return parseWalmart(mail, merchant);
@@ -111,7 +109,7 @@ function parseGenericReceipt(mail: ParsedMail, merchant: string): ExtractedItem[
   const linkedItems = links
     .map((url) => {
       const title = nearbyLinkText($, url) || titleFromUrl(url);
-      if (!title || title.length < 4) return null;
+      if (!title || !isLikelyProductTitle(title)) return null;
       return buildItem({ merchant, orderId, title, url, purchasedAt, deliveredAt, raw: { parser: "generic-link" } });
     })
     .filter((item): item is ExtractedItem => Boolean(item))
@@ -122,9 +120,8 @@ function parseGenericReceipt(mail: ParsedMail, merchant: string): ExtractedItem[
   const lineItems = (mail.text || "")
     .split(/\r?\n/)
     .map(normalizeWhitespace)
-    .filter((line) => line.length >= 8 && line.length <= 180)
-    .filter((line) => !/order|subtotal|total|tax|shipping|payment|address|tracking|unsubscribe/i.test(line))
-    .filter((line) => /[a-z]/i.test(line))
+    .map(cleanProductTitle)
+    .filter(isLikelyProductTitle)
     .slice(0, 10)
     .map((line) =>
       buildItem({
@@ -187,8 +184,8 @@ function nearbyLinkText($: cheerio.CheerioAPI, href: string) {
   $("a[href]").each((_, element) => {
     const candidate = absoluteUrl($(element).attr("href"));
     if (candidate !== href) return;
-    const text = normalizeWhitespace($(element).text() || $(element).parent().text());
-    if (text.length > best.length && text.length < 220) best = text;
+    const text = cleanProductTitle($(element).text() || $(element).parent().text());
+    if (isLikelyProductTitle(text) && text.length > best.length && text.length < 220) best = text;
   });
   return best || undefined;
 }
@@ -225,4 +222,37 @@ function findFirst(text: string, pattern: RegExp) {
 function uniqueByKey(item: ExtractedItem, index: number, array: ExtractedItem[]) {
   const key = item.externalId || item.productUrl || item.title.toLowerCase();
   return array.findIndex((candidate) => (candidate.externalId || candidate.productUrl || candidate.title.toLowerCase()) === key) === index;
+}
+
+function cleanProductTitle(value: string) {
+  return normalizeWhitespace(
+    value
+      .replace(/^\*+\s*/, "")
+      .replace(/\s+\$[0-9,.]+(?:\s*USD)?$/i, "")
+      .replace(/\s+Quantity:\s*\d+$/i, "")
+      .replace(/\s+Qty:\s*\d+$/i, "")
+  );
+}
+
+function isLikelyProductTitle(value: string) {
+  const line = cleanProductTitle(value);
+  if (line.length < 12 || line.length > 220) return false;
+  if (!/[a-z]/i.test(line)) return false;
+  if (/^\$?\d+(?:\.\d{1,2})?\s*(?:usd)?$/i.test(line)) return false;
+  if (/^quantity\s*:\s*\d+$/i.test(line)) return false;
+  if (/^(delivered|out for delivery|arriving today|arriving tomorrow|track package|your package has shipped|view order|order details|buy it again)$/i.test(line)) return false;
+  if (/\b(order|subtotal|total|tax|shipping|payment|address|tracking|unsubscribe|return window|invoice|gift card|amazon\.com)\b/i.test(line)) return false;
+  if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*-\s*[A-Z\s]+,?\s+[A-Z]{2}$/i.test(line)) return false;
+  if (/^\d{1,5}\s+[A-Za-z0-9 .'-]+(?:street|st|road|rd|drive|dr|lane|ln|avenue|ave|court|ct|circle|cir)\b/i.test(line)) return false;
+
+  const words = line.split(/\s+/);
+  if (words.length < 3) return false;
+
+  const productSignals = [
+    /\b(pack|set|kit|pcs|pc|oz|inch|inches|mm|cm|ft|lb|count|size|stainless|steel|cotton|usb|charger|battery|replacement|tool|adapter|cable|filter|cream|spray|shirt|case|cover)\b/i,
+    /\b[A-Z0-9]{2,}[-/][A-Z0-9]{2,}\b/,
+    /\d/
+  ];
+
+  return productSignals.some((pattern) => pattern.test(line)) || words.length >= 5;
 }
