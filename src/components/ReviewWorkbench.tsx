@@ -49,6 +49,7 @@ export function ReviewWorkbench() {
     setBlurb(task.user_blurb || "");
     setRating(task.rating || 5);
     setDraft(task.generated_draft || task.approved_review || "");
+    setError("");
   }
 
   async function generateDraft() {
@@ -106,12 +107,14 @@ export function ReviewWorkbench() {
           <h2>Review queue</h2>
         </div>
         <p className="muted">Pick a product, add a short note, draft, then approve and copy.</p>
-        {tasks.map((task) => (
-          <button className={`task-button ${task.id === selectedId ? "active" : ""}`} key={task.id} onClick={() => selectTask(task)}>
-            <strong>{task.title}</strong>
-            <span>{task.status} · due {new Date(task.due_at).toLocaleDateString()}</span>
-          </button>
-        ))}
+        <div className="task-scroll">
+          {tasks.map((task) => (
+            <button className={`task-button ${task.id === selectedId ? "active" : ""}`} key={task.id} onClick={() => selectTask(task)}>
+              <strong>{task.title}</strong>
+              <span>{task.status} / due {new Date(task.due_at).toLocaleDateString()}</span>
+            </button>
+          ))}
+        </div>
       </div>
       <div className="panel review-editor">
         {selected ? (
@@ -119,7 +122,7 @@ export function ReviewWorkbench() {
             <div className="product-head">
               {selected.image_url ? <img src={selected.image_url} alt="" /> : null}
               <div>
-                <p className="eyebrow">{selected.merchant} · {selected.category}</p>
+                <p className="eyebrow">{selected.merchant} / {selected.category}</p>
                 <h1>{selected.title}</h1>
                 {selected.canonical_url ? (
                   <a className="inline-link" href={selected.canonical_url} target="_blank">
@@ -128,13 +131,14 @@ export function ReviewWorkbench() {
                 ) : null}
               </div>
             </div>
+
             <div className="review-step">
               <div>
                 <p className="eyebrow">Step 1</p>
                 <h2>Your experience</h2>
               </div>
-              <div className="form-grid compact">
-                <label>
+              <div className="review-form">
+                <label className="rating-row">
                   Star rating
                   <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>
                     {[5, 4, 3, 2, 1].map((value) => (
@@ -142,7 +146,7 @@ export function ReviewWorkbench() {
                     ))}
                   </select>
                 </label>
-                <label className="wide">
+                <label>
                   Your notes
                   <textarea value={blurb} onChange={(event) => setBlurb(event.target.value)} placeholder="What worked, what didn't, how long you used it, and anything future buyers should know." />
                 </label>
@@ -156,6 +160,7 @@ export function ReviewWorkbench() {
               </div>
               {error ? <p className="error-text">{error}</p> : null}
             </div>
+
             <div className="review-step">
               <div>
                 <p className="eyebrow">Step 2</p>
