@@ -12,9 +12,14 @@ export async function draftReview(input: {
   }
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
   const prompt = [
-    "Write an authentic product review from the buyer's own notes.",
+    "Write a complete, authentic product review from the buyer's own notes.",
     "Rules:",
+    "- The buyer's notes are source material, not the final review. Do not simply repeat them back.",
+    "- If the notes are short, expand them into a useful 2 to 5 sentence review using only safe inferences from the notes and neutral product identity from the listing.",
+    "- Do not make the review shorter than the buyer's notes unless you are only removing labels, repeated text, or obvious filler.",
+    "- Preserve every concrete detail the buyer provided, including usage, fit, quantity, problems, positives, negatives, and uncertainty.",
     "- Do not invent usage claims, defects, benefits, comparisons, or durability details.",
+    "- It is okay to say there is not much to report when the buyer says the item is a standard part or worked as expected.",
     "- Keep the tone plain, specific, and natural.",
     "- Preserve mixed or negative feedback.",
     "- Use listing context only for neutral product identification.",
@@ -40,7 +45,7 @@ export async function draftReview(input: {
       generationConfig: {
         temperature: 0.55,
         topP: 0.9,
-        maxOutputTokens: 500
+        maxOutputTokens: 900
       }
     })
   });

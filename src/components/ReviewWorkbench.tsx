@@ -19,6 +19,15 @@ type Task = {
   approved_review?: string;
 };
 
+const contextPrompts = [
+  "What did you use it for?",
+  "Did it work as expected?",
+  "How was the fit, size, or compatibility?",
+  "How was the quality or finish?",
+  "Anything annoying or disappointing?",
+  "Would you buy it again?"
+];
+
 export function ReviewWorkbench() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
@@ -50,6 +59,15 @@ export function ReviewWorkbench() {
     setRating(task.rating || 5);
     setDraft(task.generated_draft || task.approved_review || "");
     setError("");
+  }
+
+  function addPrompt(question: string) {
+    setBlurb((current) => {
+      const nextLine = `${question} `;
+      if (!current.trim()) return nextLine;
+      if (current.includes(question)) return current;
+      return `${current.trim()}\n${nextLine}`;
+    });
   }
 
   async function generateDraft() {
@@ -150,6 +168,14 @@ export function ReviewWorkbench() {
                   Your notes
                   <textarea value={blurb} onChange={(event) => setBlurb(event.target.value)} placeholder="What worked, what didn't, how long you used it, and anything future buyers should know." />
                 </label>
+                <div className="context-prompts" aria-label="Review context prompts">
+                  <span>Need ideas?</span>
+                  {contextPrompts.map((question) => (
+                    <button className="prompt-chip" type="button" key={question} onClick={() => addPrompt(question)}>
+                      {question}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="action-row">
                 <button className="button" onClick={generateDraft} disabled={busy || blurb.trim().length < 3}>
