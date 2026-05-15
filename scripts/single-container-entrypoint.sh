@@ -6,7 +6,9 @@ export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-change-me}"
 export DATABASE_URL="${DATABASE_URL:-postgres://review_assistant:${POSTGRES_PASSWORD}@127.0.0.1:5432/review_assistant}"
 
 mkdir -p "$PGDATA"
+mkdir -p /run/postgresql
 chown -R postgres:postgres "$PGDATA"
+chown -R postgres:postgres /run/postgresql
 
 if [ ! -s "$PGDATA/PG_VERSION" ]; then
   su-exec postgres initdb -D "$PGDATA"
