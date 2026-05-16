@@ -21,10 +21,15 @@ export async function enrichWithPlaywright(
     return base;
   }
 
+  // PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH lets Alpine-based images use the
+  // system Chromium from apk instead of a downloaded browser binary.
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+
   let browser;
   try {
     browser = await chromium.launch({
       headless: true,
+      executablePath,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
