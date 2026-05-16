@@ -18,6 +18,7 @@ export async function enrichWithPlaywright(
   try {
     ({ chromium } = await import("playwright"));
   } catch {
+    console.log(`[enrichment] playwright not available, falling back to HTTP for ${url}`);
     return base;
   }
 
@@ -37,11 +38,13 @@ export async function enrichWithPlaywright(
         "--disable-blink-features=AutomationControlled",
       ],
     });
-  } catch {
+  } catch (err) {
+    console.log(`[enrichment] browser launch failed (${err instanceof Error ? err.message : err}), falling back to HTTP for ${url}`);
     return base;
   }
 
   try {
+    console.log(`[enrichment] playwright fetching ${url}`);
     const ctx = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -55,7 +58,8 @@ export async function enrichWithPlaywright(
     if (merchant === "amazon") return extractAmazon(page, base);
     if (merchant === "walmart") return extractWalmart(page, base);
     return base;
-  } catch {
+  } catch (err) {
+    console.log(`[enrichment] page fetch failed (${err instanceof Error ? err.message : err}), falling back to HTTP for ${url}`);
     return base;
   } finally {
     await browser.close();
