@@ -173,7 +173,7 @@ function productLinks($: cheerio.CheerioAPI, domains: string[]) {
     if (!href) return;
     const lower = href.toLowerCase();
     const domainOk = domains.length === 0 || domains.some((domain) => lower.includes(domain));
-    const looksProduct = /\/dp\/|\/gp\/product\/|\/ip\/|\/products?\//i.test(lower) || /asin=|itemid=|skuid=/i.test(lower);
+    const looksProduct = /\/dp\/|\/gp\/product\/|\/ip\/|\/pd\/|\/pdp\/|\/products?\//i.test(lower) || /asin=|itemid=|skuid=/i.test(lower);
     if (domainOk && looksProduct) urls.add(href);
   });
   return Array.from(urls);
@@ -243,8 +243,18 @@ function isLikelyProductTitle(value: string) {
   if (/^quantity\s*:\s*\d+$/i.test(line)) return false;
   if (/^(delivered|out for delivery|arriving today|arriving tomorrow|track package|your package has shipped|view order|order details|buy it again)$/i.test(line)) return false;
   if (/^(return or replace|your package|your shipment|your delivery|delivery update|delivery notification|package has been)/i.test(line)) return false;
+  if (/\breturn or (replace|exchange)\b/i.test(line)) return false;
   if (/\b(order|orders|subtotal|total|tax|shipping|payment|address|tracking|unsubscribe|return window|invoice|gift card|amazon\.com)\b/i.test(line)) return false;
   if (/\b(back porch|front door|front porch|back door|left at your|left near|package was|near the)\b/i.test(line)) return false;
+  // Explicit date strings: "April 6, 2026", "Apr. 8, 2026" etc.
+  if (/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+20\d{2}\b/i.test(line)) return false;
+  // Order/delivery status labels
+  if (/\b(estimated delivery|delivery date|order placed|placed on|placed april|placed jan|placed feb|placed mar|placed may|placed jun|placed jul|placed aug|placed sep|placed oct|placed nov|placed dec)\b/i.test(line)) return false;
+  // Fulfilment, legal, and promotional boilerplate
+  if (/\b(fulfilled|subject to terms|terms &|terms and conditions|program subject)\b/i.test(line)) return false;
+  if (/\b(rewards credit|rewards card|mylowe|everyday when|earn \d|estimate earned)\b/i.test(line)) return false;
+  // US shipping address: name+street runs into "City, ST 12345"
+  if (/,\s*[A-Z]{2}\s+\d{5}/.test(line)) return false;
   if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*-\s*[A-Z\s]+,?\s+[A-Z]{2}$/i.test(line)) return false;
   if (/^\d{1,5}\s+[A-Za-z0-9 .'-]+(?:street|st|road|rd|drive|dr|lane|ln|avenue|ave|court|ct|circle|cir)\b/i.test(line)) return false;
 
