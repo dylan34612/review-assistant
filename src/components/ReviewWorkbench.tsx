@@ -61,13 +61,14 @@ export function ReviewWorkbench() {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  async function load() {
+  async function load(preserveTask = false) {
     const response = await fetch("/api/review-tasks");
-    const data = await response.json();
+    const data: Task[] = await response.json();
     setTasks(data);
+    if (preserveTask && selectedId) return;
     const params = new URLSearchParams(window.location.search);
     const requested = params.get("task");
-    const first = data.find((task: Task) => task.id === requested) || data.find((task: Task) => ["due", "drafted"].includes(task.status)) || data[0];
+    const first = data.find((task) => task.id === requested) || data.find((task) => ["due", "drafted"].includes(task.status)) || data[0];
     if (first) selectTask(first);
   }
 
@@ -108,11 +109,20 @@ export function ReviewWorkbench() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Draft failed");
       setDraft(data.draft);
-      await load();
+      await load(true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Draft failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -123,15 +133,16 @@ export function ReviewWorkbench() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ approvedReview: draft, rating })
     });
-    await navigator.clipboard.writeText(draft);
-    await load();
+    await copyToClipboard(draft);
+    // preserveTask=true so we stay on this task and Step 3 becomes visible
+    await load(true);
   }
 
   async function openSubmitPage() {
     if (!selected) return;
     const url = reviewSubmitUrl(selected);
     if (!url) return;
-    await navigator.clipboard.writeText(draft);
+    await copyToClipboard(draft);
     window.open(url, "_blank", "noopener,noreferrer");
     setSubmitted(true);
   }
