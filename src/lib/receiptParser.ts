@@ -195,7 +195,8 @@ function absoluteUrl(value?: string) {
   try {
     const decoded = value.startsWith("http") ? value : `https://${value.replace(/^\/\//, "")}`;
     const url = new URL(decoded);
-    const redirect = url.searchParams.get("url") || url.searchParams.get("u");
+    // Amazon email links use uppercase "U"; other mailers use "url" or "u"
+    const redirect = url.searchParams.get("U") || url.searchParams.get("url") || url.searchParams.get("u");
     if (redirect?.startsWith("http")) return redirect;
     return url.toString();
   } catch {

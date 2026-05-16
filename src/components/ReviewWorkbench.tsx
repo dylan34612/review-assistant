@@ -29,11 +29,23 @@ const contextPrompts = [
   "Would you buy it again?"
 ];
 
+function extractAsin(url: string): string | undefined {
+  const patterns = [
+    /\/dp\/([A-Z0-9]{10})/i,
+    /\/gp\/product\/([A-Z0-9]{10})/i,
+    /[?&]asin=([A-Z0-9]{10})/i,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return undefined;
+}
+
 function reviewSubmitUrl(task: Task): string | undefined {
   if (task.merchant === "amazon") {
-    // Try ASIN from canonical URL first, then fall back to stored externalId
     const asin =
-      task.canonical_url?.match(/\/dp\/([A-Z0-9]{10})/i)?.[1] ||
+      (task.canonical_url ? extractAsin(task.canonical_url) : undefined) ||
       task.product_snapshot?.externalId;
     if (asin) return `https://www.amazon.com/review/create-review?asin=${asin}`;
     return "https://www.amazon.com/gp/your-account/order-history";
