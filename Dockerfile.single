@@ -15,7 +15,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PGDATA=/var/lib/postgresql/data
-RUN apk add --no-cache postgresql16 postgresql16-client postgresql16-contrib su-exec
+# postgresql16 for the embedded database; chromium + deps for Playwright enrichment.
+# Alpine uses musl so we can't run Playwright's downloaded Chromium — the system
+# package is used instead via PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH.
+RUN apk add --no-cache \
+    postgresql16 postgresql16-client postgresql16-contrib su-exec \
+    chromium nss freetype harfbuzz ca-certificates ttf-freefont
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/next.config.mjs ./next.config.mjs

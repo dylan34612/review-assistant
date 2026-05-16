@@ -8,6 +8,7 @@ type Task = {
   status: string;
   due_at: string;
   title: string;
+  brand: string | null;
   merchant: string;
   image_url?: string;
   category: string;
@@ -21,6 +22,23 @@ type Purchase = {
   delivered_at?: string;
   reviewed_at?: string;
 };
+
+function relativeDue(dateStr: string) {
+  const due = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < -1) return `${Math.abs(diffDays)}d overdue`;
+  if (diffDays === -1) return "yesterday";
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "tomorrow";
+  if (diffDays <= 14) return `in ${diffDays}d`;
+  return due.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function shortTitle(title: string) {
+  if (title.length <= 72) return title;
+  return title.slice(0, 69) + "…";
+}
 
 export function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -109,13 +127,20 @@ export function Dashboard() {
           <div className="table">
             {tasks.slice(0, 12).map((task) => (
               <a className="row" href={`/reviews?task=${task.id}`} key={task.id}>
-                <div>
-                  <strong>{task.title}</strong>
-                  <span>{task.merchant} · {task.category}</span>
+                <div className="row-thumb">
+                  {task.image_url ? (
+                    <img src={task.image_url} alt="" width={40} height={40} />
+                  ) : (
+                    <div className="thumb-placeholder" />
+                  )}
                 </div>
-                <div>
-                  <strong>{task.status}</strong>
-                  <span>{new Date(task.due_at).toLocaleDateString()}</span>
+                <div className="row-body">
+                  <strong>{shortTitle(task.title)}</strong>
+                  <span>{task.brand ? `${task.brand} · ` : ""}{task.merchant}{task.category && task.category !== "unknown" ? ` · ${task.category}` : ""}</span>
+                </div>
+                <div className="row-meta">
+                  <strong className={`status-badge status-${task.status}`}>{task.status}</strong>
+                  <span>{relativeDue(task.due_at)}</span>
                 </div>
               </a>
             ))}

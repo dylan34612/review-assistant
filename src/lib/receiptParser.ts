@@ -241,7 +241,9 @@ function isLikelyProductTitle(value: string) {
   if (/^\$?\d+(?:\.\d{1,2})?\s*(?:usd)?$/i.test(line)) return false;
   if (/^quantity\s*:\s*\d+$/i.test(line)) return false;
   if (/^(delivered|out for delivery|arriving today|arriving tomorrow|track package|your package has shipped|view order|order details|buy it again)$/i.test(line)) return false;
-  if (/\b(order|subtotal|total|tax|shipping|payment|address|tracking|unsubscribe|return window|invoice|gift card|amazon\.com)\b/i.test(line)) return false;
+  if (/^(return or replace|your package|your shipment|your delivery|delivery update|delivery notification|package has been)/i.test(line)) return false;
+  if (/\b(order|orders|subtotal|total|tax|shipping|payment|address|tracking|unsubscribe|return window|invoice|gift card|amazon\.com)\b/i.test(line)) return false;
+  if (/\b(back porch|front door|front porch|back door|left at your|left near|package was|near the)\b/i.test(line)) return false;
   if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*-\s*[A-Z\s]+,?\s+[A-Z]{2}$/i.test(line)) return false;
   if (/^\d{1,5}\s+[A-Za-z0-9 .'-]+(?:street|st|road|rd|drive|dr|lane|ln|avenue|ave|court|ct|circle|cir)\b/i.test(line)) return false;
 

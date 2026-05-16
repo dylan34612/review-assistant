@@ -48,6 +48,9 @@ export type ProductSnapshot = {
   price?: number;
   currency?: string;
   category?: string;
+  rating?: number;
+  reviewCount?: number;
+  details?: Record<string, string>;
   source: "email" | "metadata" | "api";
 };
 
