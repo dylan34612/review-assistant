@@ -6,6 +6,7 @@ import {
   normalizedProductKey,
   normalizeWhitespace
 } from "@/lib/normalize";
+import { enrichWithPlaywright } from "@/lib/playwrightEnrichment";
 import { ExtractedItem, ProductSnapshot } from "@/lib/types";
 
 export async function enrichProduct(item: ExtractedItem): Promise<ProductSnapshot> {
@@ -25,11 +26,23 @@ export async function enrichProduct(item: ExtractedItem): Promise<ProductSnapsho
 
   if (!canonicalUrl) return base;
 
+  // Use Playwright for Amazon and Walmart — it handles JS-rendered pages and
+  // extracts structured data (bullets, details table, ratings) that plain HTTP misses.
+  // Falls back to HTTP+Cheerio if Playwright is unavailable or the launch fails.
+  if (item.merchant === "amazon" || item.merchant === "walmart") {
+    const result = await enrichWithPlaywright(canonicalUrl, item.merchant, base);
+    if (result.source === "metadata") return result;
+  }
+
+  return enrichWithHttp(canonicalUrl, base, item);
+}
+
+async function enrichWithHttp(canonicalUrl: string, base: ProductSnapshot, item: ExtractedItem): Promise<ProductSnapshot> {
   try {
     const response = await fetch(canonicalUrl, {
       headers: {
         "user-agent":
-          "Mozilla/5.0 (compatible; ReviewAssistant/1.0; +https://github.com/self-hosted-review-assistant)",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         accept: "text/html,application/xhtml+xml"
       },
       signal: AbortSignal.timeout(12000)

@@ -439,3 +439,101 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* Task list row layout */
+.row {
+  grid-template-columns: 40px 1fr 120px;
+  align-items: center;
+}
+
+.row-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row-thumb img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.thumb-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: var(--line);
+}
+
+.row-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.row-body strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-meta {
+  display: grid;
+  gap: 3px;
+  text-align: right;
+}
+
+/* Status badge colours */
+.status-badge {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-due,
+.status-drafted { color: var(--accent-strong); }
+.status-completed { color: #16a34a; }
+.status-snoozed,
+.status-pending { color: var(--muted); }
+.status-skipped { color: var(--danger); }
+
+/* Task list sidebar thumbnails */
+.task-button-inner {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.task-thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: white;
+  flex-shrink: 0;
+}
+
+.task-thumb-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+/* Step 3 submit hint */
+.submit-hint {
+  font-size: 13px;
+  color: var(--accent-strong);
+  font-weight: 600;
+  padding: 10px 14px;
+  background: rgba(35, 100, 103, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(35, 100, 103, 0.2);
+}
