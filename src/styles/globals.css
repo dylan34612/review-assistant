@@ -409,6 +409,10 @@ textarea {
     overflow: visible;
   }
 
+  .review-editor {
+    order: -1;
+  }
+
   .sidebar {
     position: static;
     height: auto;
