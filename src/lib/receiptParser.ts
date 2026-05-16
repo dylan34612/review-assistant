@@ -52,6 +52,7 @@ export function parseReceipt(mail: ParsedMail): ExtractedItem[] {
   const merchant = normalizeMerchant(`${sender} ${subject}`);
   if (merchant === "amazon") return parseAmazon(mail, merchant);
   if (merchant === "walmart") return parseWalmart(mail, merchant);
+  if (merchant === "lowes") return parseLowes(mail, merchant);
   return parseGenericReceipt(mail, merchant);
 }
 
@@ -93,6 +94,23 @@ function parseWalmart(mail: ParsedMail, merchant: string): ExtractedItem[] {
       const externalId = extractWalmartItemId(url);
       const title = nearbyLinkText($, url) || titleFromUrl(url) || "Walmart item";
       return buildItem({ merchant, orderId, title, url, externalId, purchasedAt, deliveredAt, raw: { parser: "walmart" } });
+    })
+    .filter(uniqueByKey);
+  return items.length ? items : parseGenericReceipt(mail, merchant);
+}
+
+function parseLowes(mail: ParsedMail, merchant: string): ExtractedItem[] {
+  const $ = cheerio.load(mail.html || "");
+  const links = productLinks($, ["lowes.com"]);
+  const orderId = findFirst(`${mail.subject ?? ""}\n${mail.text ?? ""}`, /order(?:\s|#| number)*([0-9-]{6,})/i);
+  const date = mail.date?.toISOString();
+  const deliveredAt = /delivered/i.test(mail.subject ?? "") ? date : undefined;
+  const purchasedAt = /order|confirmation|receipt/i.test(mail.subject ?? "") ? date : undefined;
+  const items = links
+    .map((url) => {
+      const externalId = extractLowesItemId(url);
+      const title = nearbyLinkText($, url) || titleFromUrl(url) || "Lowe's item";
+      return buildItem({ merchant, orderId, title, url, externalId, purchasedAt, deliveredAt, raw: { parser: "lowes" } });
     })
     .filter(uniqueByKey);
   return items.length ? items : parseGenericReceipt(mail, merchant);
@@ -204,11 +222,25 @@ function absoluteUrl(value?: string) {
   }
 }
 
+function extractLowesItemId(url: string) {
+  const match = url.match(/\/pd\/[^/]+\/(\d+)(?:[/?]|$)/i) || url.match(/\/pd\/(\d+)(?:[/?]|$)/i);
+  return match?.[1];
+}
+
 function titleFromUrl(url: string) {
   try {
     const parsed = new URL(url);
     const parts = parsed.pathname.split("/").filter(Boolean);
-    const candidate = parts.find((part) => part.length > 8 && !/^(dp|gp|product|ip)$/i.test(part));
+    const candidate = parts.find((part) => {
+      if (part.length <= 8) return false;
+      if (/^(dp|gp|product|ip|pd|pdp)$/i.test(part)) return false;
+      // Reject bare ASINs (B + 9 alphanumeric) and pure numeric IDs
+      if (/^B[0-9A-Z]{9}$/i.test(part)) return false;
+      if (/^\d+$/.test(part)) return false;
+      // Must contain at least one letter and one non-numeric character run
+      if (!/[a-z]/i.test(part)) return false;
+      return true;
+    });
     return candidate ? normalizeWhitespace(decodeURIComponent(candidate).replace(/[-_]+/g, " ")) : undefined;
   } catch {
     return undefined;
@@ -253,6 +285,16 @@ function isLikelyProductTitle(value: string) {
   // Fulfilment, legal, and promotional boilerplate
   if (/\b(fulfilled|subject to terms|terms &|terms and conditions|program subject)\b/i.test(line)) return false;
   if (/\b(rewards credit|rewards card|mylowe|everyday when|earn \d|estimate earned)\b/i.test(line)) return false;
+  // Copyright / legal notices
+  if (/©/.test(line)) return false;
+  if (/all rights reserved/i.test(line)) return false;
+  // Shipping / status blurbs
+  if (/update you every step/i.test(line)) return false;
+  if (/we'll get started/i.test(line)) return false;
+  if (/within \d+ days of/i.test(line)) return false;
+  if (/\bdo not reply\b/i.test(line)) return false;
+  if (/\bopt out\b|\bunsubscribe\b/i.test(line)) return false;
+  if (/\bprivacy policy\b|\bterms of use\b/i.test(line)) return false;
   // US shipping address: name+street runs into "City, ST 12345"
   if (/,\s*[A-Z]{2}\s+\d{5}/.test(line)) return false;
   if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*-\s*[A-Z\s]+,?\s+[A-Z]{2}$/i.test(line)) return false;

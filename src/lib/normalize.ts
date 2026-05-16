@@ -11,6 +11,10 @@ export function normalizeMerchant(input: string) {
   if (value.includes("costco")) return "costco";
   if (value.includes("etsy")) return "etsy";
   if (value.includes("ebay")) return "ebay";
+  if (value.includes("lowe's") || value.includes("lowes")) return "lowes";
+  if (value.includes("home depot") || value.includes("homedepot")) return "homedepot";
+  if (value.includes("chewy")) return "chewy";
+  if (value.includes("newegg")) return "newegg";
   return normalizeWhitespace(value.replace(/[^a-z0-9]+/g, " ")).replaceAll(" ", "-") || "unknown";
 }
 
