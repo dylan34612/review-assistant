@@ -17,6 +17,7 @@ type Task = {
   rating?: number;
   generated_draft?: string;
   approved_review?: string;
+  product_snapshot?: { externalId?: string } | null;
 };
 
 const contextPrompts = [
@@ -29,12 +30,18 @@ const contextPrompts = [
 ];
 
 function reviewSubmitUrl(task: Task): string | undefined {
-  if (task.merchant === "amazon" && task.canonical_url) {
-    const asin = task.canonical_url.match(/\/dp\/([A-Z0-9]{10})/i)?.[1];
+  if (task.merchant === "amazon") {
+    // Try ASIN from canonical URL first, then fall back to stored externalId
+    const asin =
+      task.canonical_url?.match(/\/dp\/([A-Z0-9]{10})/i)?.[1] ||
+      task.product_snapshot?.externalId;
     if (asin) return `https://www.amazon.com/review/create-review?asin=${asin}`;
+    return "https://www.amazon.com/gp/your-account/order-history";
   }
-  if (task.merchant === "walmart" && task.canonical_url) {
-    const itemId = task.canonical_url.match(/\/ip\/(?:[^/]+\/)?(\d+)/i)?.[1];
+  if (task.merchant === "walmart") {
+    const itemId =
+      task.canonical_url?.match(/\/ip\/(?:[^/]+\/)?(\d+)/i)?.[1] ||
+      task.product_snapshot?.externalId;
     if (itemId) return `https://www.walmart.com/reviews/product/${itemId}`;
   }
   return task.canonical_url;
@@ -258,26 +265,34 @@ export function ReviewWorkbench() {
                 <button className="button" onClick={complete} disabled={draft.trim().length < 3}>
                   <Save size={16} /> Approve and copy
                 </button>
-                <button className="button secondary" onClick={() => navigator.clipboard.writeText(draft)} disabled={!draft}>
+                <button className="button secondary" onClick={() => copyToClipboard(draft)} disabled={!draft}>
                   <Copy size={16} /> Copy
                 </button>
               </div>
             </div>
 
-            {submitUrl && (isApproved || draft.trim().length >= 3) ? (
+            {(isApproved || draft.trim().length >= 3) ? (
               <div className="review-step">
                 <div>
                   <p className="eyebrow">Step 3</p>
                   <h2>Submit your review</h2>
                 </div>
-                <p className="muted">
-                  Opens the {selected.merchant} review form in a new tab and copies your review text to the clipboard. You paste and submit — nothing is sent automatically.
-                </p>
-                <div className="action-row">
-                  <button className="button" onClick={openSubmitPage} disabled={draft.trim().length < 3}>
-                    <Send size={16} /> Open {selected.merchant} review form
-                  </button>
-                </div>
+                {submitUrl ? (
+                  <>
+                    <p className="muted">
+                      Opens the {selected.merchant} review form in a new tab and copies your review to the clipboard. You paste and click Submit — nothing is sent automatically.
+                    </p>
+                    <div className="action-row">
+                      <button className="button" onClick={openSubmitPage} disabled={draft.trim().length < 3}>
+                        <Send size={16} /> Open {selected.merchant} review form
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="muted">
+                    No product URL on file for this item. Navigate to the {selected.merchant} product page manually, then paste your review from the clipboard.
+                  </p>
+                )}
                 {submitted ? (
                   <p className="submit-hint">
                     Review copied to clipboard — paste it in the tab that just opened, then click Submit.
