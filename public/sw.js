@@ -1,3 +1,7 @@
+self.addEventListener("fetch", (event) => {
+  event.respondWith(fetch(event.request));
+});
+
 self.addEventListener("push", (event) => {
   const fallback = {
     title: "Review ready",
