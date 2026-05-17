@@ -537,3 +537,127 @@ textarea {
   border-radius: 8px;
   border: 1px solid rgba(35, 100, 103, 0.2);
 }
+
+/* Logs page */
+.log-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.log-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.log-row-head {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.log-row-head:hover { background: rgba(0,0,0,0.02); }
+
+.log-subject {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-meta {
+  display: flex;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.log-detail {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.log-sender {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+
+.log-event {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(0,0,0,0.02);
+  border-left: 3px solid var(--line);
+}
+
+.log-info { border-left-color: var(--accent); }
+.log-warn { border-left-color: #c47d00; }
+.log-error { border-left-color: var(--danger); background: rgba(140,47,34,0.04); }
+
+.log-event-level {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.log-info .log-event-level { color: var(--accent); }
+.log-warn .log-event-level { color: #c47d00; }
+.log-error .log-event-level { color: var(--danger); }
+
+.log-event-msg { font-weight: 500; }
+
+.log-event-details {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.04);
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.log-ignored {
+  margin-top: 12px;
+}
+
+.log-ignored summary {
+  cursor: pointer;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.log-row-ignored {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: none;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.status-noitems { color: #c47d00; }
+.status-processing { color: var(--muted); }
