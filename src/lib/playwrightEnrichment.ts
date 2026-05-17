@@ -62,7 +62,7 @@ export async function enrichWithPlaywright(
     console.log(`[enrichment] page fetch failed (${err instanceof Error ? err.message : err}), falling back to HTTP for ${url}`);
     return base;
   } finally {
-    await browser.close();
+    try { await browser.close(); } catch { /* ignore close errors — browser may already be gone */ }
   }
 }
 
