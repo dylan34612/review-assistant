@@ -58,8 +58,15 @@ export function parseReceipt(mail: ParsedMail, log?: LogFn): ExtractedItem[] {
   return parseGenericReceipt(mail, merchant, log);
 }
 
+function loadHtml(html: string) {
+  const $ = cheerio.load(html || "");
+  // Remove style/script so their content doesn't bleed into text() calls
+  $("style, script").remove();
+  return $;
+}
+
 function parseAmazon(mail: ParsedMail, merchant: string, log?: LogFn): ExtractedItem[] {
-  const $ = cheerio.load(mail.html || "");
+  const $ = loadHtml(mail.html || "");
   const allHrefs = $("a[href]").map((_, el) => $(el).attr("href") ?? "").get();
   const resolvedHrefs = allHrefs.map((h) => absoluteUrl(h)).filter(Boolean) as string[];
   const links = productLinks($, ["amazon.com"]);
@@ -107,7 +114,7 @@ function parseAmazon(mail: ParsedMail, merchant: string, log?: LogFn): Extracted
 }
 
 function parseWalmart(mail: ParsedMail, merchant: string, log?: LogFn): ExtractedItem[] {
-  const $ = cheerio.load(mail.html || "");
+  const $ = loadHtml(mail.html || "");
   const links = productLinks($, ["walmart.com"]);
   log?.("info", `walmart parser: ${links.length} product links`);
   const orderId = findFirst(`${mail.subject ?? ""}\n${mail.text ?? ""}`, /order(?:\s|#| number)*([0-9-]{6,})/i);
@@ -129,7 +136,7 @@ function parseWalmart(mail: ParsedMail, merchant: string, log?: LogFn): Extracte
 }
 
 function parseLowes(mail: ParsedMail, merchant: string, log?: LogFn): ExtractedItem[] {
-  const $ = cheerio.load(mail.html || "");
+  const $ = loadHtml(mail.html || "");
   const links = productLinks($, ["lowes.com"]);
   log?.("info", `lowes parser: ${links.length} product links`);
   const orderId = findFirst(`${mail.subject ?? ""}\n${mail.text ?? ""}`, /order(?:\s|#| number)*([0-9-]{6,})/i);
@@ -151,7 +158,7 @@ function parseLowes(mail: ParsedMail, merchant: string, log?: LogFn): ExtractedI
 }
 
 function parseGenericReceipt(mail: ParsedMail, merchant: string, log?: LogFn): ExtractedItem[] {
-  const $ = cheerio.load(mail.html || "");
+  const $ = loadHtml(mail.html || "");
   const allText = normalizeWhitespace(`${mail.subject ?? ""} ${$("body").text() || mail.text || ""}`);
   const orderId = findFirst(allText, /(?:order|invoice|confirmation)(?:\s|#| number| id)*[:\s#-]*([A-Z0-9-]{5,})/i);
   const purchasedAt = mail.date?.toISOString();
@@ -304,6 +311,8 @@ function cleanProductTitle(value: string) {
   return normalizeWhitespace(
     value
       .replace(/^\*+\s*/, "")
+      // Strip quantity-1 prefix that cheerio concatenates without a space: "1Tidy Cats" → "Tidy Cats"
+      .replace(/^1([A-Z])/, "$1")
       .replace(/\s+\$[0-9,.]+(?:\s*USD)?$/i, "")
       .replace(/\s+Quantity:\s*\d+$/i, "")
       .replace(/\s+Qty:\s*\d+$/i, "")
@@ -329,14 +338,20 @@ function isLikelyProductTitle(value: string) {
   if (/all rights reserved/i.test(line)) return false;
   if (/update you every step/i.test(line)) return false;
   if (/we'll get started/i.test(line)) return false;
-  if (/within [\d*]+ days of|within \d+\*/i.test(line)) return false;
+  if (/within [\d*]+ (hours|days) of|within \d+\*/i.test(line)) return false;
   if (/\bdo not reply\b/i.test(line)) return false;
   if (/\bopt out\b|\bunsubscribe\b/i.test(line)) return false;
   if (/\bprivacy policy\b|\bterms of use\b/i.test(line)) return false;
   if (/,\s*[A-Z]{2}\s+\d{5}/.test(line)) return false;
   if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*-\s*[A-Z\s]+,?\s+[A-Z]{2}$/i.test(line)) return false;
   if (/^\d{1,5}\s+[A-Za-z0-9 .'-]+(?:street|st|road|rd|drive|dr|lane|ln|avenue|ave|court|ct|circle|cir)\b/i.test(line)) return false;
-  // Boilerplate phrases from Lowe's, Amazon, and other retailer emails
+  // Line ends with a bare comma — address fragment
+  if (/,$/.test(line)) return false;
+  // CSS code leaked from <style> blocks
+  if (/[{}]|!important\b|mso-[a-z]|font-size:|padding[-:]|margin[-:]|@media\b/i.test(line)) return false;
+  // Raw HTML entities not decoded (e.g. &zwnj; &amp; &#x200F;)
+  if (/&[a-z]{2,8};|&#\d+;|&#x[0-9a-f]+;/i.test(line)) return false;
+  // Boilerplate phrases from Lowe's, Amazon, Chewy, and other retailer emails
   if (/registered trademark/i.test(line)) return false;
   if (/credit approval|credit card/i.test(line)) return false;
   if (/subject to (credit|change|availability)/i.test(line)) return false;
@@ -344,15 +359,39 @@ function isLikelyProductTitle(value: string) {
   if (/thank you for (shopping|your (purchase|order|business))/i.test(line)) return false;
   if (/want to hear from you|hear about your (experience|visit)/i.test(line)) return false;
   if (/tell us (about|how|what)/i.test(line)) return false;
-  if (/\bneed help with\b|\bhave questions\b|\bquestions\? (contact|visit|call)/i.test(line)) return false;
+  if (/\bneed help\b.*\b(24\/7|call|chat|contact)\b|\bneed help\?/i.test(line)) return false;
+  if (/we're here for you|here for you 24\/7/i.test(line)) return false;
+  if (/connect with (a |your |our )?vet\b|chat with (a |our )/i.test(line)) return false;
   if (/\bshipment\b|\bdelivery experience\b/i.test(line)) return false;
   if (/purchase date|return (policy|window)|days (to|for) return/i.test(line)) return false;
+  // Return / refund policy (with time windows like "48 hours", "30 days")
+  if (/\d+\s*hours? to return|\breturns? must be (initiated|started|completed)/i.test(line)) return false;
+  if (/appliance returns?|initiated within \d+/i.test(line)) return false;
+  // Promotional discount text — starts with "X% off" or "$X off"
+  if (/^\d+%\s*off\b|^\$\d+(\.\d+)?\s*off\b/i.test(line)) return false;
+  if (/\d+%\s*off\s+(all|eligible|select)\b/i.test(line)) return false;
+  // "for X days" at start of line — marketing guarantee text
+  if (/^for \d+ days?\b/i.test(line)) return false;
+  // SKU / Internet catalog number lines
+  if (/\bSKU\s*#\d+\b|\bInternet\s*#\d+\b/i.test(line)) return false;
+  // SMS / text marketing
+  if (/\btext\s+['"]?\w+['"]?\s+to\s+\d+|\[sms:/i.test(line)) return false;
+  // Email template section identifiers (e.g. Chewy "Recommendation Pod 2")
+  if (/^recommendation pod\b/i.test(line)) return false;
+  // Legal boilerplate with parenthetical clause expansions
+  if (/\(such as but not limited to\)/i.test(line)) return false;
+  // "programs (such as..." type legal sentences
+  if (/\bprograms?\s+\(/i.test(line)) return false;
 
   const words = line.split(/\s+/);
   if (words.length < 3) return false;
 
   const productSignals = [
-    /\b(pack|set|kit|pcs|pc|oz|inch|inches|mm|cm|ft|lb|count|size|stainless|steel|cotton|usb|charger|battery|replacement|tool|adapter|cable|filter|cream|spray|shirt|case|cover|thread|bolt|screw|valve|pump|motor|bracket|panel|sensor|switch|gauge|drill|saw|wrench|plier)\b/i,
+    /\b(pack|set|kit|pcs|pc|oz|fl oz|lb|mg|ml|g\b|kg|count|size|stainless|steel|cotton|usb|charger|battery|replacement|tool|adapter|cable|filter|thread|bolt|screw|valve|pump|motor|bracket|panel|sensor|switch|gauge|drill|saw|wrench|plier)\b/i,
+    /\b(cream|spray|shirt|case|cover|lotion|serum|gel|foam|powder|shampoo|conditioner|balm|oil\b|wipe|patch)\b/i,
+    /\b(formula|vitamin|supplement|probiotic|capsule|tablet|softgel|chewable|gummy|gummies)\b/i,
+    /\b(treat|treats|kibble|wet food|dry food|cat litter|litter|clumping|unscented|grain.free)\b/i,
+    /\b(organic|natural|ultra|premium|advanced|original|classic|deluxe|pro\b|plus\b)\b/i,
     /\b[A-Z0-9]{2,}[-/][A-Z0-9]{2,}\b/,
     /\d/
   ];
