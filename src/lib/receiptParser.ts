@@ -79,11 +79,18 @@ function parseAmazon(mail: ParsedMail, merchant: string, log?: LogFn): Extracted
   const date = mail.date?.toISOString();
   const deliveredAt = /delivered/i.test(mail.subject ?? "") ? date : undefined;
   const purchasedAt = /order|confirmation|receipt/i.test(mail.subject ?? "") ? date : undefined;
+  // Amazon delivery/shipped emails put the product name in the subject: Delivered: "Product Name"
+  const subjectTitle = findFirst(mail.subject ?? "", /(?:delivered|shipped)[^"]*"([^"]{4,})"/i);
 
   const items = links
     .map((url) => {
       const externalId = extractAmazonAsin(url);
-      const title = (externalId && titles.get(externalId)) || titleFromUrl(url) || "Amazon item";
+      const title =
+        (externalId && titles.get(externalId)) ||
+        nearbyLinkText($, url) ||
+        titleFromUrl(url) ||
+        (links.length === 1 ? subjectTitle : undefined) ||
+        "Amazon item";
       return buildItem({ merchant, orderId, title, url, externalId, purchasedAt, deliveredAt, raw: { parser: "amazon" } });
     })
     .filter(uniqueByKey);
@@ -220,7 +227,10 @@ function productLinks($: cheerio.CheerioAPI, domains: string[]) {
     if (!href) return;
     const lower = href.toLowerCase();
     const domainOk = domains.length === 0 || domains.some((domain) => lower.includes(domain));
-    const looksProduct = /\/dp\/|\/gp\/product\/|\/ip\/|\/pd\/|\/pdp\/|\/products?\//i.test(lower) || /asin=|itemid=|skuid=/i.test(lower);
+    const looksProduct = (
+      /\/dp\/|\/gp\/product\/|\/ip\/|\/pd\/|\/pdp\/|\/products?\//i.test(lower) ||
+      /asin=|itemid=|skuid=/i.test(lower)
+    ) && !/\/progress-tracker\/|\/gp\/css\/|\/gp\/buyagain|\/your-account/i.test(lower);
     if (domainOk && looksProduct) urls.add(href);
   });
   return Array.from(urls);
