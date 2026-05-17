@@ -26,6 +26,7 @@ type Settings = {
 export function SettingsPanel() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [pushState, setPushState] = useState("Not subscribed");
+  const [rescanState, setRescanState] = useState<"idle" | "busy" | "done" | "error">("idle");
 
   useEffect(() => {
     fetch("/api/settings").then((response) => response.json()).then(setSettings);
@@ -39,6 +40,17 @@ export function SettingsPanel() {
       body: JSON.stringify(next)
     });
     setSettings(await response.json());
+  }
+
+  async function rescanEmails() {
+    setRescanState("busy");
+    try {
+      const response = await fetch("/api/worker/rescan", { method: "POST" });
+      if (!response.ok) throw new Error("Rescan failed");
+      setRescanState("done");
+    } catch {
+      setRescanState("error");
+    }
   }
 
   async function subscribePush() {
@@ -118,6 +130,14 @@ export function SettingsPanel() {
           Default review delay days
           <input type="number" min={1} max={90} value={settings.reviewTiming.defaultDelayDays} onChange={(event) => save({ ...settings, reviewTiming: { defaultDelayDays: Number(event.target.value) } })} />
         </label>
+        <div>
+          <button className="button secondary" onClick={rescanEmails} disabled={rescanState === "busy"}>
+            {rescanState === "busy" ? "Scanning…" : "Re-scan emails"}
+          </button>
+          {rescanState === "done" && <p className="muted" style={{ marginTop: "0.5rem" }}>Done — check the review queue for new items.</p>}
+          {rescanState === "error" && <p className="error-text" style={{ marginTop: "0.5rem" }}>Rescan failed. Check server logs.</p>}
+          <p className="muted" style={{ marginTop: "0.25rem" }}>Retries emails that previously found no products, without affecting completed reviews.</p>
+        </div>
       </div>
     </section>
   );
