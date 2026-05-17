@@ -329,22 +329,33 @@ function isLikelyProductTitle(value: string) {
   if (/all rights reserved/i.test(line)) return false;
   if (/update you every step/i.test(line)) return false;
   if (/we'll get started/i.test(line)) return false;
-  if (/within \d+ days of/i.test(line)) return false;
+  if (/within [\d*]+ days of|within \d+\*/i.test(line)) return false;
   if (/\bdo not reply\b/i.test(line)) return false;
   if (/\bopt out\b|\bunsubscribe\b/i.test(line)) return false;
   if (/\bprivacy policy\b|\bterms of use\b/i.test(line)) return false;
   if (/,\s*[A-Z]{2}\s+\d{5}/.test(line)) return false;
   if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*-\s*[A-Z\s]+,?\s+[A-Z]{2}$/i.test(line)) return false;
   if (/^\d{1,5}\s+[A-Za-z0-9 .'-]+(?:street|st|road|rd|drive|dr|lane|ln|avenue|ave|court|ct|circle|cir)\b/i.test(line)) return false;
+  // Boilerplate phrases from Lowe's, Amazon, and other retailer emails
+  if (/registered trademark/i.test(line)) return false;
+  if (/credit approval|credit card/i.test(line)) return false;
+  if (/subject to (credit|change|availability)/i.test(line)) return false;
+  if (/thanks (again )?for (shopping|your (purchase|order|business))/i.test(line)) return false;
+  if (/thank you for (shopping|your (purchase|order|business))/i.test(line)) return false;
+  if (/want to hear from you|hear about your (experience|visit)/i.test(line)) return false;
+  if (/tell us (about|how|what)/i.test(line)) return false;
+  if (/\bneed help with\b|\bhave questions\b|\bquestions\? (contact|visit|call)/i.test(line)) return false;
+  if (/\bshipment\b|\bdelivery experience\b/i.test(line)) return false;
+  if (/purchase date|return (policy|window)|days (to|for) return/i.test(line)) return false;
 
   const words = line.split(/\s+/);
   if (words.length < 3) return false;
 
   const productSignals = [
-    /\b(pack|set|kit|pcs|pc|oz|inch|inches|mm|cm|ft|lb|count|size|stainless|steel|cotton|usb|charger|battery|replacement|tool|adapter|cable|filter|cream|spray|shirt|case|cover)\b/i,
+    /\b(pack|set|kit|pcs|pc|oz|inch|inches|mm|cm|ft|lb|count|size|stainless|steel|cotton|usb|charger|battery|replacement|tool|adapter|cable|filter|cream|spray|shirt|case|cover|thread|bolt|screw|valve|pump|motor|bracket|panel|sensor|switch|gauge|drill|saw|wrench|plier)\b/i,
     /\b[A-Z0-9]{2,}[-/][A-Z0-9]{2,}\b/,
     /\d/
   ];
 
-  return productSignals.some((pattern) => pattern.test(line)) || words.length >= 5;
+  return productSignals.some((pattern) => pattern.test(line));
 }

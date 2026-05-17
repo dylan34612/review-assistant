@@ -137,11 +137,22 @@ export function ReviewWorkbench() {
   }
 
   async function copyToClipboard(text: string) {
+    // navigator.clipboard requires HTTPS; fall back to execCommand for local HTTP
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch { /* fall through */ }
+    }
+    const el = document.createElement("textarea");
+    el.value = text;
+    Object.assign(el.style, { position: "fixed", top: "0", opacity: "0" });
+    document.body.appendChild(el);
+    el.select();
     try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      return false;
+      return document.execCommand("copy");
+    } finally {
+      document.body.removeChild(el);
     }
   }
 

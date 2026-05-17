@@ -54,10 +54,13 @@ async function enrichWithHttp(canonicalUrl: string, base: ProductSnapshot, item:
     if (!response.ok) return base;
     const html = await response.text();
     const $ = cheerio.load(html);
-    const title =
+    const rawTitle = normalizeWhitespace(
       meta($, "og:title") ||
       meta($, "twitter:title") ||
-      normalizeWhitespace($("title").first().text()).replace(/\s*-\s*Amazon.*$/i, "");
+      $("title").first().text()
+    ).replace(/\s*[-|]\s*Amazon\.com.*$/i, "").replace(/^Amazon\.com[:\s]*/i, "");
+    // Treat a bare "Amazon.com" result as empty — it means a CAPTCHA or home page, not a product
+    const title = /^amazon\.com$/i.test(rawTitle.trim()) ? "" : rawTitle;
     const imageUrl = meta($, "og:image") || meta($, "twitter:image") || item.imageUrl;
     const description = meta($, "og:description") || meta($, "description");
     const brand = $('[itemprop="brand"]').first().text() || item.brand;
