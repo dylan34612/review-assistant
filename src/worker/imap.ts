@@ -48,15 +48,20 @@ export async function scanMailbox() {
         }
 
         const parsed = await simpleParser(message.source);
+        const sender = parsed.from?.text ?? "(no sender)";
+        const subject = parsed.subject ?? "(no subject)";
+
         if (!isLikelyReceipt(parsed)) {
           await recordMessage({ mailboxName, uidValidity, uid, messageId, parsed, status: "ignored" });
           skipped += 1;
           continue;
         }
 
+        console.log(`[imap] receipt detected: "${subject}" from ${sender}`);
         const messageRow = await recordMessage({ mailboxName, uidValidity, uid, messageId, parsed, status: "processing" });
         try {
           const items = parseReceipt(parsed);
+          console.log(`[imap] parsed ${items.length} item(s) from "${subject}" — ${items.map((i) => `${i.merchant}:${i.title.slice(0, 40)}`).join(", ") || "none"}`);
           for (const item of items) {
             const snapshot = await enrichProduct(item);
             await upsertPurchase(item, snapshot, messageRow.id, settings.reviewTiming);
@@ -65,6 +70,7 @@ export async function scanMailbox() {
           processed += 1;
         } catch (error) {
           const messageText = error instanceof Error ? error.message : String(error);
+          console.error(`[imap] error processing "${subject}":`, messageText);
           await query("update processed_messages set status = 'error', error = $1 where id = $2", [messageText, messageRow.id]);
         }
       }

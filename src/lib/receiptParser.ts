@@ -58,7 +58,13 @@ export function parseReceipt(mail: ParsedMail): ExtractedItem[] {
 
 function parseAmazon(mail: ParsedMail, merchant: string): ExtractedItem[] {
   const $ = cheerio.load(mail.html || "");
+  const allHrefs = $("a[href]").map((_, el) => $(el).attr("href") ?? "").get();
+  const resolvedHrefs = allHrefs.map((h) => absoluteUrl(h)).filter(Boolean) as string[];
   const links = productLinks($, ["amazon.com"]);
+  console.log(`[parseAmazon] subject="${mail.subject}" hrefs=${allHrefs.length} resolved=${resolvedHrefs.length} productLinks=${links.length}`);
+  if (links.length === 0 && resolvedHrefs.length > 0) {
+    console.log(`[parseAmazon] sample resolved hrefs: ${resolvedHrefs.slice(0, 5).join(" | ")}`);
+  }
   const titles = new Map<string, string>();
   $("a").each((_, element) => {
     const href = absoluteUrl($(element).attr("href"));
