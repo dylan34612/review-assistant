@@ -1,7 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const search = req.nextUrl.searchParams.get("q")?.trim() ?? "";
+  const limitParam = parseInt(req.nextUrl.searchParams.get("limit") ?? "250", 10);
+  const limit = Math.min(Math.max(limitParam, 1), 2000);
+
+  const params: (string | number)[] = [];
+  let whereClause = "";
+  if (search) {
+    params.push(`%${search}%`);
+    whereClause = `where (pm.subject ilike $1 or pm.sender ilike $1)`;
+  }
+  params.push(limit);
+  const limitParam2 = `$${params.length}`;
+
   const result = await query<{
     id: string;
     subject: string;
@@ -30,9 +43,10 @@ export async function GET() {
     from processed_messages pm
     left join purchases p on p.source_message_id = pm.id
     left join parser_events pe on pe.processed_message_id = pm.id
+    ${whereClause}
     group by pm.id
     order by pm.processed_at desc
-    limit 100
-  `);
+    limit ${limitParam2}
+  `, params);
   return NextResponse.json(result.rows);
 }

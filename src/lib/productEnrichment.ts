@@ -30,8 +30,12 @@ export async function enrichProduct(item: ExtractedItem): Promise<ProductSnapsho
   // extracts structured data (bullets, details table, ratings) that plain HTTP misses.
   // Falls back to HTTP+Cheerio if Playwright is unavailable or the launch fails.
   if (item.merchant === "amazon" || item.merchant === "walmart") {
-    const result = await enrichWithPlaywright(canonicalUrl, item.merchant, base);
-    if (result.source === "metadata") return result;
+    try {
+      const result = await enrichWithPlaywright(canonicalUrl, item.merchant, base);
+      if (result.source === "metadata") return result;
+    } catch (err) {
+      console.log(`[enrichment] playwright threw unexpectedly for ${canonicalUrl}: ${err instanceof Error ? err.message : err}`);
+    }
   }
 
   return enrichWithHttp(canonicalUrl, base, item);
