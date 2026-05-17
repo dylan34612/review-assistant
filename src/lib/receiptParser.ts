@@ -351,6 +351,15 @@ function isLikelyProductTitle(value: string) {
   if (/[{}]|!important\b|mso-[a-z]|font-size:|padding[-:]|margin[-:]|@media\b/i.test(line)) return false;
   // Raw HTML entities not decoded (e.g. &zwnj; &amp; &#x200F;)
   if (/&[a-z]{2,8};|&#\d+;|&#x[0-9a-f]+;/i.test(line)) return false;
+  // Line contains a URL — not a product name
+  if (/https?:\/\/\S{10,}/.test(line)) return false;
+  // UUID / email message reference IDs
+  if (/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test(line)) return false;
+  if (/\bemail message reference\b/i.test(line)) return false;
+  // Sentence fragments starting with a conjunction
+  if (/^(and|or|but)\s+/i.test(line)) return false;
+  // Lines starting with a day-of-week — date strings without a year
+  if (/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)[a-z]*[,.]?\s/i.test(line)) return false;
   // Boilerplate phrases from Lowe's, Amazon, Chewy, and other retailer emails
   if (/registered trademark/i.test(line)) return false;
   if (/credit approval|credit card/i.test(line)) return false;
@@ -364,20 +373,23 @@ function isLikelyProductTitle(value: string) {
   if (/connect with (a |your |our )?vet\b|chat with (a |our )/i.test(line)) return false;
   if (/\bshipment\b|\bdelivery experience\b/i.test(line)) return false;
   if (/purchase date|return (policy|window)|days (to|for) return/i.test(line)) return false;
-  // Return / refund policy (with time windows like "48 hours", "30 days")
+  // Return / refund / replacement links
   if (/\d+\s*hours? to return|\breturns? must be (initiated|started|completed)/i.test(line)) return false;
   if (/appliance returns?|initiated within \d+/i.test(line)) return false;
+  if (/\bstart a return\b|\breturn\/replacement\b/i.test(line)) return false;
   // Promotional discount text — starts with "X% off" or "$X off"
   if (/^\d+%\s*off\b|^\$\d+(\.\d+)?\s*off\b/i.test(line)) return false;
   if (/\d+%\s*off\s+(all|eligible|select)\b/i.test(line)) return false;
-  // "for X days" at start of line — marketing guarantee text
-  if (/^for \d+ days?\b/i.test(line)) return false;
+  // "for X days" at start of line — marketing guarantee text (strip word boundary: "daysVisit" still matches)
+  if (/^for \d+ days/i.test(line)) return false;
   // SKU / Internet catalog number lines
   if (/\bSKU\s*#\d+\b|\bInternet\s*#\d+\b/i.test(line)) return false;
   // SMS / text marketing
   if (/\btext\s+['"]?\w+['"]?\s+to\s+\d+|\[sms:/i.test(line)) return false;
-  // Email template section identifiers (e.g. Chewy "Recommendation Pod 2")
-  if (/^recommendation pod\b/i.test(line)) return false;
+  // Email template section identifiers (e.g. Chewy "Recommendation Pod 2", "Sponsored Pod 3")
+  if (/^(recommendation|sponsored) pod\b/i.test(line)) return false;
+  // Social media follow prompts
+  if (/\bon tiktok\b|\bon instagram\b|\bon facebook\b|\bfollow us on\b/i.test(line)) return false;
   // Legal boilerplate with parenthetical clause expansions
   if (/\(such as but not limited to\)/i.test(line)) return false;
   // "programs (such as..." type legal sentences
@@ -387,7 +399,7 @@ function isLikelyProductTitle(value: string) {
   if (words.length < 3) return false;
 
   const productSignals = [
-    /\b(pack|set|kit|pcs|pc|oz|fl oz|lb|mg|ml|g\b|kg|count|size|stainless|steel|cotton|usb|charger|battery|replacement|tool|adapter|cable|filter|thread|bolt|screw|valve|pump|motor|bracket|panel|sensor|switch|gauge|drill|saw|wrench|plier)\b/i,
+    /\b(pack|set|kit|pcs|pc|oz|fl oz|lb|mg|ml|g\b|kg|count|size|stainless|steel|cotton|usb|charger|battery|replacement (filter|part|pad|brush|blade|cartridge|battery|bulb|head)|tool|adapter|cable|filter|thread|bolt|screw|valve|pump|motor|bracket|panel|sensor|switch|gauge|drill|saw|wrench|plier)\b/i,
     /\b(cream|spray|shirt|case|cover|lotion|serum|gel|foam|powder|shampoo|conditioner|balm|oil\b|wipe|patch)\b/i,
     /\b(formula|vitamin|supplement|probiotic|capsule|tablet|softgel|chewable|gummy|gummies)\b/i,
     /\b(treat|treats|kibble|wet food|dry food|cat litter|litter|clumping|unscented|grain.free)\b/i,
