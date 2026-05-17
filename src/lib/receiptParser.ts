@@ -95,6 +95,10 @@ function parseAmazon(mail: ParsedMail, merchant: string, log?: LogFn): Extracted
     })
     .filter(uniqueByKey);
 
+  const noTitle = items.filter((i) => i.title === "Amazon item");
+  if (noTitle.length) {
+    log?.("warn", `${noTitle.length} item(s) have no extractable title`, { asins: noTitle.map((i) => i.externalId) });
+  }
   if (!items.length) {
     log?.("warn", "amazon parser found no product links, falling back to generic parser");
     return parseGenericReceipt(mail, merchant, log);
@@ -230,7 +234,8 @@ function productLinks($: cheerio.CheerioAPI, domains: string[]) {
     const looksProduct = (
       /\/dp\/|\/gp\/product\/|\/ip\/|\/pd\/|\/pdp\/|\/products?\//i.test(lower) ||
       /asin=|itemid=|skuid=/i.test(lower)
-    ) && !/\/progress-tracker\/|\/gp\/css\/|\/gp\/buyagain|\/your-account/i.test(lower);
+    ) && !/\/progress-tracker\/|\/gp\/css\/|\/gp\/buyagain|\/your-account/i.test(lower)
+      && !lower.includes("agh3col"); // Amazon "You might also like" / deals section
     if (domainOk && looksProduct) urls.add(href);
   });
   return Array.from(urls);
