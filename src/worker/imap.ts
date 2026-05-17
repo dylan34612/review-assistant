@@ -74,13 +74,18 @@ export async function scanMailbox() {
           log("error", messageText);
           await query("update processed_messages set status = 'error', error = $1 where id = $2", [messageText, messageRow.id]);
         } finally {
-          if (entries.length) {
-            await query(
-              `insert into parser_events(processed_message_id, level, message, details)
-               select $1, e->>'level', e->>'message', (e->'details')::jsonb
-               from jsonb_array_elements($2::jsonb) as e`,
-              [messageRow.id, JSON.stringify(entries.map((e) => ({ level: e.level, message: e.message, details: e.details ?? {} })))]
-            );
+          if (entries.length && messageRow?.id) {
+            try {
+              for (const entry of entries) {
+                await query(
+                  `insert into parser_events(processed_message_id, level, message, details)
+                   values ($1, $2, $3, $4::jsonb)`,
+                  [messageRow.id, entry.level, entry.message, JSON.stringify(entry.details ?? {})]
+                );
+              }
+            } catch (logErr) {
+              console.error("[imap] failed to write parser_events:", logErr instanceof Error ? logErr.message : logErr);
+            }
           }
         }
       }
