@@ -10,6 +10,7 @@ import {
   normalizeWhitespace
 } from "@/lib/normalize";
 import { ExtractedItem } from "@/lib/types";
+import { LogFn } from "@/lib/parseLog";
 
 const merchantHints = [
   "amazon",
@@ -46,25 +47,27 @@ export function isLikelyReceipt(mail: Pick<ParsedMail, "from" | "subject">) {
   return hasMerchant && hasReceiptSubject;
 }
 
-export function parseReceipt(mail: ParsedMail): ExtractedItem[] {
+export function parseReceipt(mail: ParsedMail, log?: LogFn): ExtractedItem[] {
   const sender = mail.from?.text ?? "";
   const subject = mail.subject ?? "";
   const merchant = normalizeMerchant(`${sender} ${subject}`);
-  if (merchant === "amazon") return parseAmazon(mail, merchant);
-  if (merchant === "walmart") return parseWalmart(mail, merchant);
-  if (merchant === "lowes") return parseLowes(mail, merchant);
-  return parseGenericReceipt(mail, merchant);
+  log?.("info", `merchant detected: ${merchant}`, { sender, subject });
+  if (merchant === "amazon") return parseAmazon(mail, merchant, log);
+  if (merchant === "walmart") return parseWalmart(mail, merchant, log);
+  if (merchant === "lowes") return parseLowes(mail, merchant, log);
+  return parseGenericReceipt(mail, merchant, log);
 }
 
-function parseAmazon(mail: ParsedMail, merchant: string): ExtractedItem[] {
+function parseAmazon(mail: ParsedMail, merchant: string, log?: LogFn): ExtractedItem[] {
   const $ = cheerio.load(mail.html || "");
   const allHrefs = $("a[href]").map((_, el) => $(el).attr("href") ?? "").get();
   const resolvedHrefs = allHrefs.map((h) => absoluteUrl(h)).filter(Boolean) as string[];
   const links = productLinks($, ["amazon.com"]);
-  console.log(`[parseAmazon] subject="${mail.subject}" hrefs=${allHrefs.length} resolved=${resolvedHrefs.length} productLinks=${links.length}`);
-  if (links.length === 0 && resolvedHrefs.length > 0) {
-    console.log(`[parseAmazon] sample resolved hrefs: ${resolvedHrefs.slice(0, 5).join(" | ")}`);
-  }
+  log?.("info", `amazon parser: ${allHrefs.length} hrefs → ${resolvedHrefs.length} resolved → ${links.length} product links`, {
+    sampleResolved: resolvedHrefs.slice(0, 5),
+    productLinks: links.slice(0, 5)
+  });
+
   const titles = new Map<string, string>();
   $("a").each((_, element) => {
     const href = absoluteUrl($(element).attr("href"));
@@ -85,12 +88,17 @@ function parseAmazon(mail: ParsedMail, merchant: string): ExtractedItem[] {
     })
     .filter(uniqueByKey);
 
-  return items.length ? items : parseGenericReceipt(mail, merchant);
+  if (!items.length) {
+    log?.("warn", "amazon parser found no product links, falling back to generic parser");
+    return parseGenericReceipt(mail, merchant, log);
+  }
+  return items;
 }
 
-function parseWalmart(mail: ParsedMail, merchant: string): ExtractedItem[] {
+function parseWalmart(mail: ParsedMail, merchant: string, log?: LogFn): ExtractedItem[] {
   const $ = cheerio.load(mail.html || "");
   const links = productLinks($, ["walmart.com"]);
+  log?.("info", `walmart parser: ${links.length} product links`);
   const orderId = findFirst(`${mail.subject ?? ""}\n${mail.text ?? ""}`, /order(?:\s|#| number)*([0-9-]{6,})/i);
   const date = mail.date?.toISOString();
   const deliveredAt = /delivered/i.test(mail.subject ?? "") ? date : undefined;
@@ -102,12 +110,17 @@ function parseWalmart(mail: ParsedMail, merchant: string): ExtractedItem[] {
       return buildItem({ merchant, orderId, title, url, externalId, purchasedAt, deliveredAt, raw: { parser: "walmart" } });
     })
     .filter(uniqueByKey);
-  return items.length ? items : parseGenericReceipt(mail, merchant);
+  if (!items.length) {
+    log?.("warn", "walmart parser found no product links, falling back to generic parser");
+    return parseGenericReceipt(mail, merchant, log);
+  }
+  return items;
 }
 
-function parseLowes(mail: ParsedMail, merchant: string): ExtractedItem[] {
+function parseLowes(mail: ParsedMail, merchant: string, log?: LogFn): ExtractedItem[] {
   const $ = cheerio.load(mail.html || "");
   const links = productLinks($, ["lowes.com"]);
+  log?.("info", `lowes parser: ${links.length} product links`);
   const orderId = findFirst(`${mail.subject ?? ""}\n${mail.text ?? ""}`, /order(?:\s|#| number)*([0-9-]{6,})/i);
   const date = mail.date?.toISOString();
   const deliveredAt = /delivered/i.test(mail.subject ?? "") ? date : undefined;
@@ -119,10 +132,14 @@ function parseLowes(mail: ParsedMail, merchant: string): ExtractedItem[] {
       return buildItem({ merchant, orderId, title, url, externalId, purchasedAt, deliveredAt, raw: { parser: "lowes" } });
     })
     .filter(uniqueByKey);
-  return items.length ? items : parseGenericReceipt(mail, merchant);
+  if (!items.length) {
+    log?.("warn", "lowes parser found no product links, falling back to generic parser");
+    return parseGenericReceipt(mail, merchant, log);
+  }
+  return items;
 }
 
-function parseGenericReceipt(mail: ParsedMail, merchant: string): ExtractedItem[] {
+function parseGenericReceipt(mail: ParsedMail, merchant: string, log?: LogFn): ExtractedItem[] {
   const $ = cheerio.load(mail.html || "");
   const allText = normalizeWhitespace(`${mail.subject ?? ""} ${$("body").text() || mail.text || ""}`);
   const orderId = findFirst(allText, /(?:order|invoice|confirmation)(?:\s|#| number| id)*[:\s#-]*([A-Z0-9-]{5,})/i);
@@ -139,11 +156,13 @@ function parseGenericReceipt(mail: ParsedMail, merchant: string): ExtractedItem[
     .filter((item): item is ExtractedItem => Boolean(item))
     .filter(uniqueByKey);
 
-  if (linkedItems.length) return linkedItems.slice(0, 20);
+  if (linkedItems.length) {
+    log?.("info", `generic parser: ${linkedItems.length} linked item(s)`);
+    return linkedItems.slice(0, 20);
+  }
 
-  const lineItems = (mail.text || "")
-    .split(/\r?\n/)
-    .map(normalizeWhitespace)
+  const textLines = (mail.text || "").split(/\r?\n/).map(normalizeWhitespace);
+  const lineItems = textLines
     .map(cleanProductTitle)
     .filter(isLikelyProductTitle)
     .slice(0, 10)
@@ -158,6 +177,10 @@ function parseGenericReceipt(mail: ParsedMail, merchant: string): ExtractedItem[
         raw: { parser: "generic-text" }
       })
     );
+
+  log?.("info", `generic parser: 0 linked items, ${lineItems.length} text item(s) from ${textLines.length} lines`, {
+    sampleLines: textLines.filter((l) => l.length > 8).slice(0, 10)
+  });
 
   return lineItems;
 }
@@ -243,7 +266,6 @@ function titleFromUrl(url: string) {
       // Reject bare ASINs (B + 9 alphanumeric) and pure numeric IDs
       if (/^B[0-9A-Z]{9}$/i.test(part)) return false;
       if (/^\d+$/.test(part)) return false;
-      // Must contain at least one letter and one non-numeric character run
       if (!/[a-z]/i.test(part)) return false;
       return true;
     });
@@ -284,24 +306,18 @@ function isLikelyProductTitle(value: string) {
   if (/\breturn or (replace|exchange)\b/i.test(line)) return false;
   if (/\b(order|orders|subtotal|total|tax|shipping|payment|address|tracking|unsubscribe|return window|invoice|gift card|amazon\.com)\b/i.test(line)) return false;
   if (/\b(back porch|front door|front porch|back door|left at your|left near|package was|near the)\b/i.test(line)) return false;
-  // Explicit date strings: "April 6, 2026", "Apr. 8, 2026" etc.
   if (/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+20\d{2}\b/i.test(line)) return false;
-  // Order/delivery status labels
   if (/\b(estimated delivery|delivery date|order placed|placed on|placed april|placed jan|placed feb|placed mar|placed may|placed jun|placed jul|placed aug|placed sep|placed oct|placed nov|placed dec)\b/i.test(line)) return false;
-  // Fulfilment, legal, and promotional boilerplate
   if (/\b(fulfilled|subject to terms|terms &|terms and conditions|program subject)\b/i.test(line)) return false;
   if (/\b(rewards credit|rewards card|mylowe|everyday when|earn \d|estimate earned)\b/i.test(line)) return false;
-  // Copyright / legal notices
   if (/©/.test(line)) return false;
   if (/all rights reserved/i.test(line)) return false;
-  // Shipping / status blurbs
   if (/update you every step/i.test(line)) return false;
   if (/we'll get started/i.test(line)) return false;
   if (/within \d+ days of/i.test(line)) return false;
   if (/\bdo not reply\b/i.test(line)) return false;
   if (/\bopt out\b|\bunsubscribe\b/i.test(line)) return false;
   if (/\bprivacy policy\b|\bterms of use\b/i.test(line)) return false;
-  // US shipping address: name+street runs into "City, ST 12345"
   if (/,\s*[A-Z]{2}\s+\d{5}/.test(line)) return false;
   if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*-\s*[A-Z\s]+,?\s+[A-Z]{2}$/i.test(line)) return false;
   if (/^\d{1,5}\s+[A-Za-z0-9 .'-]+(?:street|st|road|rd|drive|dr|lane|ln|avenue|ave|court|ct|circle|cir)\b/i.test(line)) return false;

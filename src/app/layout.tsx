@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Bell, Inbox, Settings } from "lucide-react";
+import { Bell, Inbox, ScrollText, Settings } from "lucide-react";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
@@ -29,6 +29,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </Link>
               <Link href="/reviews">
                 <Bell size={18} /> Reviews
+              </Link>
+              <Link href="/logs">
+                <ScrollText size={18} /> Logs
               </Link>
               <Link href="/settings">
                 <Settings size={18} /> Settings

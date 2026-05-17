@@ -4,6 +4,7 @@ import { query } from "@/lib/db";
 import { enrichProduct } from "@/lib/productEnrichment";
 import { upsertPurchase } from "@/lib/repository";
 import { isLikelyReceipt, parseReceipt } from "@/lib/receiptParser";
+import { createLogCollector } from "@/lib/parseLog";
 import { getAllSettings } from "@/lib/settings";
 
 export async function scanMailbox() {
@@ -57,11 +58,11 @@ export async function scanMailbox() {
           continue;
         }
 
-        console.log(`[imap] receipt detected: "${subject}" from ${sender}`);
         const messageRow = await recordMessage({ mailboxName, uidValidity, uid, messageId, parsed, status: "processing" });
+        const { log, entries } = createLogCollector();
         try {
-          const items = parseReceipt(parsed);
-          console.log(`[imap] parsed ${items.length} item(s) from "${subject}" — ${items.map((i) => `${i.merchant}:${i.title.slice(0, 40)}`).join(", ") || "none"}`);
+          const items = parseReceipt(parsed, log);
+          log("info", `parsed ${items.length} item(s)`, { items: items.map((i) => ({ merchant: i.merchant, title: i.title.slice(0, 60), url: i.productUrl })) });
           for (const item of items) {
             const snapshot = await enrichProduct(item);
             await upsertPurchase(item, snapshot, messageRow.id, settings.reviewTiming);
@@ -70,8 +71,17 @@ export async function scanMailbox() {
           processed += 1;
         } catch (error) {
           const messageText = error instanceof Error ? error.message : String(error);
-          console.error(`[imap] error processing "${subject}":`, messageText);
+          log("error", messageText);
           await query("update processed_messages set status = 'error', error = $1 where id = $2", [messageText, messageRow.id]);
+        } finally {
+          if (entries.length) {
+            await query(
+              `insert into parser_events(processed_message_id, level, message, details)
+               select $1, e->>'level', e->>'message', (e->'details')::jsonb
+               from jsonb_array_elements($2::jsonb) as e`,
+              [messageRow.id, JSON.stringify(entries.map((e) => ({ level: e.level, message: e.message, details: e.details ?? {} })))]
+            );
+          }
         }
       }
     } finally {
