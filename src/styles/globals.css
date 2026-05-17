@@ -539,6 +539,26 @@ textarea {
 }
 
 /* Logs page */
+.log-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: var(--bg);
+}
+.log-search-icon { color: var(--muted); flex-shrink: 0; }
+.log-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
 .log-table {
   display: flex;
   flex-direction: column;

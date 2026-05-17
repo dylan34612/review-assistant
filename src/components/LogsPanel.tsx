@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { RefreshCw, Search } from "lucide-react";
 
 type ParserEvent = {
   id: string;
@@ -50,15 +50,25 @@ export function LogsPanel() {
   const [logs, setLogs] = useState<MessageLog[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function load() {
+  async function load(q = "") {
     setLoading(true);
-    const response = await fetch("/api/logs");
+    const params = new URLSearchParams({ limit: "500" });
+    if (q) params.set("q", q);
+    const response = await fetch(`/api/logs?${params}`);
     setLogs(await response.json());
     setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
+
+  function onSearchChange(value: string) {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => load(value), 400);
+  }
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -79,14 +89,24 @@ export function LogsPanel() {
           <p className="eyebrow">Diagnostics</p>
           <h1>Parser logs</h1>
         </div>
-        <button className="button secondary" onClick={load} disabled={loading}>
+        <button className="button secondary" onClick={() => load(search)} disabled={loading}>
           <RefreshCw size={16} /> Refresh
         </button>
       </div>
 
       <div className="panel">
+        <div className="log-search-row">
+          <Search size={16} className="log-search-icon" />
+          <input
+            className="log-search-input"
+            type="search"
+            placeholder="Filter by subject or sender…"
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+        </div>
         <p className="muted" style={{ marginBottom: "1rem" }}>
-          Shows the last 100 emails the scanner has seen. Click any row to expand the parser events for that message.
+          Showing up to 500 emails{search ? ` matching "${search}"` : ""}. Click any row to expand parser events.
           {" "}<strong>{nonIgnored.length}</strong> receipt(s), <strong>{ignored.length}</strong> ignored.
         </p>
 
