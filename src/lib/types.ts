@@ -20,6 +20,10 @@ export type ReviewTimingSettings = {
   defaultDelayDays: number;
 };
 
+export type GeminiSettings = {
+  model: string;
+};
+
 export type ExtractedItem = {
   merchant: string;
   orderId?: string;

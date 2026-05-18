@@ -7,7 +7,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const allowed = ["notifications", "privacy", "reviewTiming", "imap"];
+  const allowed = ["notifications", "privacy", "reviewTiming", "imap", "gemini"];
   for (const key of allowed) {
     if (key in body) await setSetting(key, body[key]);
   }

@@ -21,15 +21,27 @@ type Settings = {
   };
   reviewTiming: { defaultDelayDays: number };
   imap: { enabled: boolean };
+  gemini: { model: string };
 };
+
+type GeminiModel = { id: string; displayName: string };
 
 export function SettingsPanel() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [pushState, setPushState] = useState("Not subscribed");
   const [rescanState, setRescanState] = useState<"idle" | "busy" | "done" | "error">("idle");
+  const [geminiModels, setGeminiModels] = useState<GeminiModel[]>([]);
+  const [modelsError, setModelsError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/settings").then((response) => response.json()).then(setSettings);
+    fetch("/api/gemini/models")
+      .then((response) => response.json())
+      .then((data: { models: GeminiModel[]; error?: string }) => {
+        if (data.error) setModelsError(data.error);
+        else setGeminiModels(data.models);
+      })
+      .catch(() => setModelsError("Failed to load models"));
   }, []);
 
   async function save(next: Settings) {
@@ -121,6 +133,31 @@ export function SettingsPanel() {
         </label>
         <Toggle label="Allow order IDs in LLM payloads" checked={settings.privacy.sendOrderIdsToLlm} onChange={(value) => save({ ...settings, privacy: { ...settings.privacy, sendOrderIdsToLlm: value } })} />
         <Toggle label="Allow email metadata in LLM payloads" checked={settings.privacy.sendEmailMetadataToLlm} onChange={(value) => save({ ...settings, privacy: { ...settings.privacy, sendEmailMetadataToLlm: value } })} />
+      </div>
+
+      <div className="panel settings-grid">
+        <h2>AI Model</h2>
+        {modelsError ? (
+          <p className="error-text">{modelsError}</p>
+        ) : geminiModels.length === 0 ? (
+          <p className="muted">Loading available models…</p>
+        ) : (
+          <label>
+            Gemini model
+            <select
+              value={settings.gemini.model}
+              onChange={(event) => save({ ...settings, gemini: { model: event.target.value } })}
+            >
+              {!geminiModels.some((m) => m.id === settings.gemini.model) && (
+                <option value={settings.gemini.model}>{settings.gemini.model}</option>
+              )}
+              {geminiModels.map((m) => (
+                <option key={m.id} value={m.id}>{m.displayName}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <p className="muted">Model used when drafting reviews. Quota limits apply per model on the free tier.</p>
       </div>
 
       <div className="panel settings-grid">

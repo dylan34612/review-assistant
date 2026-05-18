@@ -1,4 +1,5 @@
-import { ProductSnapshot } from "@/lib/types";
+import { getSetting } from "@/lib/settings";
+import { GeminiSettings, ProductSnapshot } from "@/lib/types";
 
 export async function draftReview(input: {
   product: ProductSnapshot;
@@ -10,7 +11,8 @@ export async function draftReview(input: {
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is required to draft reviews");
   }
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+  const geminiSettings = await getSetting<GeminiSettings>("gemini");
+  const model = geminiSettings.model || process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
   const prompt = [
     "Write a complete, authentic product review based on the buyer's notes.",
     "Rules:",
