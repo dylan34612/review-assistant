@@ -8,6 +8,30 @@
   --accent-strong: #17494b;
   --danger: #8c2f22;
   --shadow: 0 12px 28px rgba(38, 35, 29, 0.08);
+  --sidebar-bg: #efeadf;
+  --nav-ink: #3b362d;
+  --label-ink: #3e392f;
+  --input-bg: #ffffff;
+  --surface-subtle: rgba(0, 0, 0, 0.02);
+  --surface-subtle-md: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] {
+  --bg: #1a1917;
+  --panel: #242220;
+  --ink: #f0ece4;
+  --muted: #9e9587;
+  --line: #3a3630;
+  --accent: #2d8b8f;
+  --accent-strong: #4ab5b9;
+  --danger: #c0453a;
+  --shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  --sidebar-bg: #1f1d1b;
+  --nav-ink: #c8c0b5;
+  --label-ink: #c8c0b5;
+  --input-bg: #2d2a27;
+  --surface-subtle: rgba(255, 255, 255, 0.03);
+  --surface-subtle-md: rgba(255, 255, 255, 0.05);
 }
 
 * {
@@ -41,7 +65,7 @@ textarea {
 .sidebar {
   border-right: 1px solid var(--line);
   padding: 22px;
-  background: #efeadf;
+  background: var(--sidebar-bg);
   position: sticky;
   top: 0;
   height: 100vh;
@@ -79,7 +103,7 @@ nav a {
   padding: 10px 12px;
   text-decoration: none;
   border-radius: 8px;
-  color: #3b362d;
+  color: var(--nav-ink);
 }
 
 nav a:hover {
@@ -237,7 +261,7 @@ h2 {
 label {
   display: grid;
   gap: 6px;
-  color: #3e392f;
+  color: var(--label-ink);
   font-weight: 650;
 }
 
@@ -246,7 +270,7 @@ select,
 textarea {
   width: 100%;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--input-bg);
   color: var(--ink);
   border-radius: 8px;
   padding: 10px 12px;
@@ -291,7 +315,7 @@ textarea {
 .task-button {
   text-align: left;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--input-bg);
   border-radius: 8px;
   padding: 12px;
   cursor: pointer;
@@ -337,7 +361,7 @@ textarea {
 
 .prompt-chip {
   border: 1px solid var(--line);
-  background: white;
+  background: var(--input-bg);
   color: var(--accent-strong);
   border-radius: 999px;
   padding: 6px 10px;
@@ -458,7 +482,7 @@ textarea {
   object-fit: contain;
   border-radius: 6px;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--input-bg);
 }
 
 .thumb-placeholder {
@@ -496,7 +520,7 @@ textarea {
 
 .status-due,
 .status-drafted { color: var(--accent-strong); }
-.status-completed { color: #16a34a; }
+.status-completed { color: #22c55e; }
 .status-snoozed,
 .status-pending { color: var(--muted); }
 .status-skipped { color: var(--danger); }
@@ -515,7 +539,7 @@ textarea {
   object-fit: contain;
   border-radius: 6px;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--input-bg);
   flex-shrink: 0;
 }
 
@@ -586,7 +610,7 @@ textarea {
   font-size: 13px;
 }
 
-.log-row-head:hover { background: rgba(0,0,0,0.02); }
+.log-row-head:hover { background: var(--surface-subtle); }
 
 .log-subject {
   font-weight: 500;
@@ -624,7 +648,7 @@ textarea {
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 12px;
-  background: rgba(0,0,0,0.02);
+  background: var(--surface-subtle);
   border-left: 3px solid var(--line);
 }
 
@@ -648,7 +672,7 @@ textarea {
 .log-event-details {
   margin: 4px 0 0;
   padding: 6px 8px;
-  background: rgba(0,0,0,0.04);
+  background: var(--surface-subtle-md);
   border-radius: 4px;
   font-size: 11px;
   white-space: pre-wrap;
@@ -681,3 +705,29 @@ textarea {
 
 .status-noitems { color: #c47d00; }
 .status-processing { color: var(--muted); }
+
+/* Dark mode toggle */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: auto;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--nav-ink);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.theme-toggle:hover {
+  background: rgba(35, 100, 103, 0.1);
+}
+
+.sidebar-nav-wrap {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 64px);
+}
