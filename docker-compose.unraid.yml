@@ -1,6 +1,9 @@
 # Default Unraid deployment: one container.
 # This runs Postgres, the Next.js web app, and the background worker inside one
 # container to keep the Unraid Docker list compact.
+#
+# Watchtower checks GHCR every 15 minutes and restarts the container when a
+# new image is published. Requires: docker login ghcr.io on the host first.
 
 services:
   review-assistant:
@@ -10,6 +13,8 @@ services:
       - "3000:3000"
     volumes:
       - /mnt/user/appdata/review-assistant/postgres:/var/lib/postgresql/data
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       APP_BASE_URL: ${APP_BASE_URL}
@@ -36,3 +41,15 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT}
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
       WORKER_POLL_SECONDS: ${WORKER_POLL_SECONDS}
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker/config.json:/config.json:ro
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: "900"
+      WATCHTOWER_INCLUDE_RESTARTING: "true"
