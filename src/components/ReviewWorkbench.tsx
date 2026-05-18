@@ -83,7 +83,9 @@ export function ReviewWorkbench() {
   async function load(preserveTask = false) {
     const response = await fetch("/api/review-tasks");
     const data: Task[] = await response.json();
-    const active = data.filter((task) => task.status !== "completed" && task.status !== "skipped");
+    const active = data.filter(
+      (task) => (task.status !== "completed" && task.status !== "skipped") || (preserveTask && task.id === selectedId)
+    );
     setTasks(active);
     if (preserveTask && selectedId) return;
     const params = new URLSearchParams(window.location.search);
