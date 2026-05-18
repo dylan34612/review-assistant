@@ -12,6 +12,9 @@
   --nav-ink: #3b362d;
   --label-ink: #3e392f;
   --input-bg: #ffffff;
+  --task-bg: #f5f2ec;
+  --task-border: var(--line);
+  --accent-glow: rgba(35, 100, 103, 0.18);
   --surface-subtle: rgba(0, 0, 0, 0.02);
   --surface-subtle-md: rgba(0, 0, 0, 0.04);
 }
@@ -30,6 +33,9 @@
   --nav-ink: #c8c0b5;
   --label-ink: #c8c0b5;
   --input-bg: #2d2a27;
+  --task-bg: #302e2b;
+  --task-border: #4a4540;
+  --accent-glow: rgba(45, 139, 143, 0.25);
   --surface-subtle: rgba(255, 255, 255, 0.03);
   --surface-subtle-md: rgba(255, 255, 255, 0.05);
 }
@@ -314,8 +320,9 @@ textarea {
 
 .task-button {
   text-align: left;
-  border: 1px solid var(--line);
-  background: var(--input-bg);
+  border: 1px solid var(--task-border);
+  background: var(--task-bg);
+  color: var(--ink);
   border-radius: 8px;
   padding: 12px;
   cursor: pointer;
@@ -323,7 +330,7 @@ textarea {
 
 .task-button.active {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(35, 100, 103, 0.15);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 .review-editor {
@@ -538,7 +545,7 @@ textarea {
   height: 36px;
   object-fit: contain;
   border-radius: 6px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--task-border);
   background: var(--input-bg);
   flex-shrink: 0;
 }
