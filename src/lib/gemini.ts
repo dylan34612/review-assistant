@@ -12,15 +12,16 @@ export async function draftReview(input: {
   }
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
   const prompt = [
-    "Write a complete, authentic product review from the buyer's own notes.",
+    "Write a complete, authentic product review based on the buyer's notes.",
     "Rules:",
-    "- The buyer's notes are source material, not the final review. Do not simply repeat them back.",
-    "- If the notes are short, expand them into a useful 2 to 5 sentence review using only safe inferences from the notes and neutral product identity from the listing.",
-    "- Do not make the review shorter than the buyer's notes unless you are only removing labels, repeated text, or obvious filler.",
+    "- The buyer's notes are raw source material. Your job is to expand them into a well-developed review — never just reword or lightly paraphrase what the buyer wrote.",
+    "- The final review must be meaningfully longer and more detailed than the buyer's notes. Aim for at least 4 to 6 sentences even if the notes are brief.",
+    "- Develop the buyer's points: add context about how the item was used, what made it work well or poorly, how it fits into their situation, and why the rating makes sense.",
+    "- You may make safe, reasonable inferences that follow naturally from what the buyer said (e.g. if they say 'fits well', note comfort or sizing reliability). Do not invent facts.",
     "- Preserve every concrete detail the buyer provided, including usage, fit, quantity, problems, positives, negatives, and uncertainty.",
-    "- Do not invent usage claims, defects, benefits, comparisons, or durability details.",
-    "- It is okay to say there is not much to report when the buyer says the item is a standard part or worked as expected.",
-    "- Keep the tone plain, specific, and natural.",
+    "- Do not invent usage claims, defects, benefits, comparisons, or durability details that are not supported by the notes.",
+    "- It is okay to say there is not much to report when the buyer says the item is a standard part or worked as expected, but still expand to at least 3 sentences.",
+    "- Keep the tone plain, specific, and natural — written as if the buyer wrote it themselves.",
     "- Preserve mixed or negative feedback.",
     "- Use listing context only for neutral product identification.",
     "- Do not mention that AI helped write it.",
@@ -43,9 +44,9 @@ export async function draftReview(input: {
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.55,
+        temperature: 0.7,
         topP: 0.9,
-        maxOutputTokens: 900
+        maxOutputTokens: 1200
       }
     })
   });
