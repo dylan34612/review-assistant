@@ -68,6 +68,11 @@ export function Dashboard() {
     [tasks, purchases]
   );
 
+  const queueTasks = useMemo(
+    () => tasks.filter((task) => task.status !== "completed" && task.status !== "skipped"),
+    [tasks]
+  );
+
   async function runSync() {
     setRunning(true);
     try {
@@ -123,9 +128,9 @@ export function Dashboard() {
         </div>
         {loading ? (
           <p className="muted">Loading queue...</p>
-        ) : tasks.length ? (
+        ) : queueTasks.length ? (
           <div className="table">
-            {tasks.slice(0, 12).map((task) => (
+            {queueTasks.slice(0, 12).map((task) => (
               <a className="row" href={`/reviews?task=${task.id}`} key={task.id}>
                 <div className="row-thumb">
                   {task.image_url ? (

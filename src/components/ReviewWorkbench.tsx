@@ -83,11 +83,12 @@ export function ReviewWorkbench() {
   async function load(preserveTask = false) {
     const response = await fetch("/api/review-tasks");
     const data: Task[] = await response.json();
-    setTasks(data);
+    const active = data.filter((task) => task.status !== "completed" && task.status !== "skipped");
+    setTasks(active);
     if (preserveTask && selectedId) return;
     const params = new URLSearchParams(window.location.search);
     const requested = params.get("task");
-    const first = data.find((task) => task.id === requested) || data.find((task) => ["due", "drafted"].includes(task.status)) || data[0];
+    const first = active.find((task) => task.id === requested) || active.find((task) => ["due", "drafted"].includes(task.status)) || active[0];
     if (first) selectTask(first);
   }
 
