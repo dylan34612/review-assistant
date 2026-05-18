@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (pathname === "/sw.js" || pathname === "/manifest.webmanifest" || pathname.startsWith("/icon")) {
+    return NextResponse.next();
+  }
+
   if (process.env.AUTH_ENABLED !== "true") {
     return NextResponse.next();
   }
