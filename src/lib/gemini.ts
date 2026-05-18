@@ -51,15 +51,23 @@ export async function draftReview(input: {
     })
   });
 
+  const body = await response.text();
   if (!response.ok) {
-    const body = await response.text();
     throw new Error(`Gemini request failed: ${response.status} ${body}`);
   }
 
-  const data = (await response.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim();
-  if (!text) throw new Error("Gemini returned an empty draft");
+  let data: { candidates?: Array<{ content?: { parts?: Array<{ text?: string }>; }; finishReason?: string; }> };
+  try {
+    data = JSON.parse(body);
+  } catch {
+    throw new Error(`Gemini returned non-JSON response: ${body.slice(0, 200)}`);
+  }
+
+  const candidate = data.candidates?.[0];
+  const text = candidate?.content?.parts?.map((part) => part.text ?? "").join("").trim();
+  if (!text) {
+    const reason = candidate?.finishReason ?? "unknown";
+    throw new Error(`Gemini returned an empty draft (finishReason: ${reason})`);
+  }
   return text;
 }
