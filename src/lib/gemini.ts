@@ -1,5 +1,6 @@
 import { getSetting } from "@/lib/settings";
-import { GeminiSettings, ProductSnapshot } from "@/lib/types";
+import { draftWithOpenAI } from "@/lib/openai";
+import { GeminiSettings, OpenAISettings, ProductSnapshot } from "@/lib/types";
 
 export async function draftReview(input: {
   product: ProductSnapshot;
@@ -7,12 +8,6 @@ export async function draftReview(input: {
   rating: number;
   daysSinceDelivery?: number;
 }) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is required to draft reviews");
-  }
-  const geminiSettings = await getSetting<GeminiSettings>("gemini");
-  const model = geminiSettings.model || process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
   const prompt = [
     "Write a complete, authentic product review based on the buyer's notes.",
     "Rules:",
@@ -39,6 +34,18 @@ export async function draftReview(input: {
   ]
     .filter(Boolean)
     .join("\n");
+
+  const openaiSettings = await getSetting<OpenAISettings>("openai");
+  if (openaiSettings.baseUrl && openaiSettings.apiKey) {
+    return draftWithOpenAI(input, openaiSettings, prompt);
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is required to draft reviews");
+  }
+  const geminiSettings = await getSetting<GeminiSettings>("gemini");
+  const model = geminiSettings.model || process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
     method: "POST",

@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { GeminiSettings, NotificationSettings, PrivacySettings, ReviewTimingSettings } from "@/lib/types";
+import { GeminiSettings, NotificationSettings, OpenAISettings, PrivacySettings, ReviewTimingSettings } from "@/lib/types";
 
 const defaults = {
   notifications: {
@@ -23,7 +23,13 @@ const defaults = {
   } satisfies ReviewTimingSettings,
   gemini: {
     model: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite"
-  } satisfies GeminiSettings
+  } satisfies GeminiSettings,
+  openai: {
+    baseUrl: "",
+    model: "",
+    apiKey: "",
+    maxTokens: 1200
+  } satisfies OpenAISettings
 };
 
 export async function getSetting<T>(key: keyof typeof defaults): Promise<T> {
@@ -39,7 +45,8 @@ export async function getAllSettings() {
     privacy: (map.get("privacy") ?? defaults.privacy) as PrivacySettings,
     reviewTiming: (map.get("reviewTiming") ?? defaults.reviewTiming) as ReviewTimingSettings,
     imap: (map.get("imap") ?? { enabled: true }) as { enabled: boolean },
-    gemini: (map.get("gemini") ?? defaults.gemini) as GeminiSettings
+    gemini: (map.get("gemini") ?? defaults.gemini) as GeminiSettings,
+    openai: (map.get("openai") ?? defaults.openai) as OpenAISettings
   };
 }
 
