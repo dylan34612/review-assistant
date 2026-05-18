@@ -20,6 +20,17 @@ export type ReviewTimingSettings = {
   defaultDelayDays: number;
 };
 
+export type GeminiSettings = {
+  model: string;
+};
+
+export type OpenAISettings = {
+  baseUrl: string;
+  model: string;
+  apiKey: string;
+  maxTokens: number;
+};
+
 export type ExtractedItem = {
   merchant: string;
   orderId?: string;
