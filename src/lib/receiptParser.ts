@@ -313,6 +313,8 @@ function cleanProductTitle(value: string) {
       .replace(/^\*+\s*/, "")
       // Strip quantity-1 prefix that cheerio concatenates without a space: "1Tidy Cats" → "Tidy Cats"
       .replace(/^1([A-Z])/, "$1")
+      // Strip delivery status prefix concatenated without a space: "DeliveredCat Chow" → "Cat Chow"
+      .replace(/^(delivered|shipped)\s*/i, "")
       .replace(/\s+\$[0-9,.]+(?:\s*USD)?$/i, "")
       .replace(/\s+Quantity:\s*\d+$/i, "")
       .replace(/\s+Qty:\s*\d+$/i, "")
@@ -372,6 +374,14 @@ function isLikelyProductTitle(value: string) {
   if (/we're here for you|here for you 24\/7/i.test(line)) return false;
   if (/connect with (a |your |our )?vet\b|chat with (a |our )/i.test(line)) return false;
   if (/\bshipment\b|\bdelivery experience\b/i.test(line)) return false;
+  if (/^delivery\s+day\b/i.test(line)) return false;
+  // "X More Item(s) in Your Order" — Amazon order-summary links
+  if (/^\d+\s+more items?\s+in\s+your\b/i.test(line)) return false;
+  // "Yay!" / "You're all set" — marketing/notification boilerplate
+  if (/^yay[!.]/i.test(line)) return false;
+  if (/\byou'?re all set\b/i.test(line)) return false;
+  // "itAdd" — cheerio concatenation artifact from Amazon Add-on/Subscribe UI elements
+  if (/\bitAdd\b/.test(line)) return false;
   if (/purchase date|return (policy|window)|days (to|for) return/i.test(line)) return false;
   // Return / refund / replacement links
   if (/\d+\s*hours? to return|\breturns? must be (initiated|started|completed)/i.test(line)) return false;
