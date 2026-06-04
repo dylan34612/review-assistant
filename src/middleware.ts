@@ -19,6 +19,14 @@ export function middleware(request: NextRequest) {
     });
   }
 
+  const agentKey = process.env.AGENT_API_KEY;
+  if (agentKey) {
+    const providedKey = request.headers.get("x-api-key");
+    if (providedKey === agentKey) {
+      return NextResponse.next();
+    }
+  }
+
   const header = request.headers.get("authorization");
   if (header?.startsWith("Basic ")) {
     const decoded = decodeBasicAuth(header.slice("Basic ".length));
