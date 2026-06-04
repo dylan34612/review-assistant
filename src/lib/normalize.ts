@@ -81,7 +81,17 @@ export function normalizedProductKey(args: {
   return `${args.merchant}:${normalizeWhitespace(text).slice(0, 180)}`;
 }
 
-export function moneyToNumber(value?: string | null) {
+export function computeReviewUrl(merchant: string, externalId?: string | null, canonicalUrl?: string | null): string | undefined {
+  if (merchant === "amazon" && externalId) {
+    return `https://www.amazon.com/review/create-review/?asin=${externalId}`;
+  }
+  if (merchant === "walmart" && externalId) {
+    return `https://www.walmart.com/reviews/product/${externalId}`;
+  }
+  return canonicalUrl ?? undefined;
+}
+
+
   if (!value) return undefined;
   const match = value.replace(/,/g, "").match(/([0-9]+(?:\.[0-9]{1,2})?)/);
   return match ? Number(match[1]) : undefined;

@@ -6,7 +6,7 @@ import { markDueTasks, listReviewTasks, upsertPurchase } from "@/lib/repository"
 import { draftReview } from "@/lib/gemini";
 import { enrichProduct } from "@/lib/productEnrichment";
 import { getAllSettings, setSetting } from "@/lib/settings";
-import { normalizeMerchant } from "@/lib/normalize";
+import { normalizeMerchant, computeReviewUrl } from "@/lib/normalize";
 import { notifyDueTasks } from "@/lib/notifications";
 import { scanMailbox } from "@/worker/imap";
 import { getSetting } from "@/lib/settings";
@@ -43,7 +43,11 @@ async function dispatch(tool: string, args: Record<string, unknown>): Promise<un
     case "list_review_tasks": {
       const status = typeof args.status === "string" ? args.status : undefined;
       await markDueTasks();
-      return listReviewTasks(status);
+      const tasks = await listReviewTasks(status);
+      return tasks.map((t: Record<string, unknown>) => ({
+        ...t,
+        review_url: computeReviewUrl(t.merchant as string, (t.product_snapshot as { externalId?: string } | null)?.externalId, t.canonical_url as string | null)
+      }));
     }
 
     case "draft_review": {
