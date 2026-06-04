@@ -92,6 +92,7 @@ export function computeReviewUrl(merchant: string, externalId?: string | null, c
 }
 
 
+export function moneyToNumber(value?: string | null) {
   if (!value) return undefined;
   const match = value.replace(/,/g, "").match(/([0-9]+(?:\.[0-9]{1,2})?)/);
   return match ? Number(match[1]) : undefined;
